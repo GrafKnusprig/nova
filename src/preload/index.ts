@@ -6,7 +6,11 @@ contextBridge.exposeInMainWorld("mindmap", {
   open: () => ipcRenderer.invoke("mindmap:open"),
   save: (data: unknown) => ipcRenderer.invoke("mindmap:save", data),
   saveAs: (data: unknown) => ipcRenderer.invoke("mindmap:save-as", data),
-  detach: (panel: string) => ipcRenderer.invoke("mindmap:detach", panel),
+  onExternalChange: (callback: (result: { path: string; data: unknown }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, result: { path: string; data: unknown }) => callback(result);
+    ipcRenderer.on("mindmap:external-change", listener);
+    return () => ipcRenderer.removeListener("mindmap:external-change", listener);
+  },
   onCommand: (callback: (command: string) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, command: string) => callback(command);
     ipcRenderer.on("mindmap:command", listener);

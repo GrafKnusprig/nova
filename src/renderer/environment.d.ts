@@ -8,7 +8,7 @@ declare global {
       open(): Promise<{ path: string; data: unknown } | undefined>;
       save(data: unknown): Promise<string>;
       saveAs(data: unknown): Promise<string | undefined>;
-      detach(panel: string): Promise<void>;
+      onExternalChange(callback: (result: { path: string; data: unknown }) => void): () => void;
       onCommand(callback: (command: string) => void): () => void;
     };
   }

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyMap, flatten, insertNode, removeNode, uniqueId, updateNode, type MapNode } from "./model";
+import { createNode, emptyMap, flatten, guidId, insertNode, removeNode, updateNode, type MapNode } from "./model";
 
-const node = (id: string, children: MapNode[] = []): MapNode => ({ id, title: id, type: "concept", categories: ["test"], summary: "", status: "active", children, links: [] });
+const node = (id: string, children: MapNode[] = []): MapNode => ({ id, title: id, tags: ["test"], main_tag: "test", summary: "", created_at: "2026-01-01T00:00:00.000Z", modified_at: "2026-01-01T00:00:00.000Z", children, links: [] });
 
 test("recursive insertion and update retain hierarchy", () => {
   const roots = [node("root")];
@@ -21,7 +21,14 @@ test("subtree deletion removes incoming links to every descendant", () => {
   assert.deepEqual(result.nodes[1].links, []);
 });
 
-test("unique IDs are stable kebab-case and collision-free", () => {
-  const document = emptyMap(); document.nodes = [node("new-node"), node("new-node-2")];
-  assert.equal(uniqueId(document, "New Node"), "new-node-3");
+test("new node IDs are title-independent UUIDs", () => {
+  const first = guidId(emptyMap()); const second = guidId(emptyMap());
+  assert.match(first, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  assert.notEqual(first, second);
+});
+
+test("node creation and updates own timestamps", () => {
+  const created = createNode(emptyMap(), "Stable title"); assert.equal(created.created_at, created.modified_at);
+  const updated = updateNode([created], created.id, { title: "Changed title" }, "2026-09-15T12:00:00.000Z")[0];
+  assert.equal(updated.id, created.id); assert.equal(updated.created_at, created.created_at); assert.equal(updated.modified_at, "2026-09-15T12:00:00.000Z");
 });
