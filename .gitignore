@@ -1,0 +1,38 @@
+# Installed dependencies
+node_modules/
+
+# Renderer, Electron, and installer output
+dist/
+dist-electron/
+release/
+out/
+
+# Test and tool-generated caches
+coverage/
+.nyc_output/
+.vite/
+.cache/
+*.tsbuildinfo
+.eslintcache
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Package-manager and application logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local temporary files
+*.tmp
+*.bak
+*.swp
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

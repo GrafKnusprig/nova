@@ -1,0 +1,53 @@
+{
+  "name": "mindmap-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron-based desktop viewer and editor for schema-4 knowledge maps.",
+  "main": "dist-electron/main/index.js",
+  "scripts": {
+    "dev": "npm run build:electron && npm exec -- concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "npm exec -- vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev:electron": "npm exec -- wait-on tcp:5173 && set ELECTRON_RUN_AS_NODE=&& set \"VITE_DEV_SERVER_URL=http://127.0.0.1:5173\"&& node_modules\\.bin\\electron.cmd .",
+    "typecheck": "npm exec -- tsc --noEmit -p tsconfig.main.json && npm exec -- tsc --noEmit -p tsconfig.preload.json && npm exec -- tsc --noEmit -p tsconfig.renderer.json",
+    "build:electron": "npm exec -- tsc -p tsconfig.main.json && npm exec -- tsc -p tsconfig.preload.json",
+    "build": "npm run typecheck && npm exec -- vite build && npm run build:electron",
+    "test": "npm exec -- tsx --test src/renderer/model.test.ts",
+    "start": "set ELECTRON_RUN_AS_NODE=&& node_modules\\.bin\\electron.cmd .",
+    "package": "npm run build && npm exec -- electron-builder --win"
+  },
+  "dependencies": {
+    "d3-force": "^3.0.0",
+    "flexlayout-react": "^0.8.19",
+    "pixi.js": "^8.14.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "@types/d3-force": "^3.0.10",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.waveletvisualizer.mindmap",
+    "productName": "Project Knowledge Map",
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
