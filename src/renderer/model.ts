@@ -4,18 +4,22 @@ export interface MapNode {
   created_at: string; modified_at: string; children: MapNode[]; links: MapLink[];
 }
 export interface MapDocument {
-  version: 5; viewer_version: "5.0.0";
+  version: 6; viewer_version: "6.0.1";
   project: { name: string; summary: string };
   llm_context: { summary: string; instructions: string[]; tag_definitions: Record<string, string> };
   nodes: MapNode[];
-  view: { expanded: string[]; positions: Record<string, [number, number]>; zoom: number; viewport: [number, number]; hidden_tags: string[]; workspace?: unknown };
+  view: { expanded: string[]; positions: Record<string, [number, number]>; zoom: number; viewport: [number, number]; tag_filter_mode: "include" | "exclude"; tag_filter_tags: string[]; workspace?: unknown };
 }
 export interface IndexedNode extends MapNode { parentId?: string; depth: number }
 
 export function nowIso(): string { return new Date().toISOString(); }
 
+export function nodePassesTagFilter(node: Pick<MapNode, "tags">, mode: "include" | "exclude", selectedTags: ReadonlySet<string>): boolean {
+  const matches = node.tags.some((tag) => selectedTags.has(tag)); return mode === "include" ? matches : !matches;
+}
+
 export function emptyMap(): MapDocument {
-  return { version: 5, viewer_version: "5.0.0", project: { name: "Untitled project", summary: "" }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [], view: { expanded: [], positions: {}, zoom: 0.7, viewport: [0, 0], hidden_tags: [] } };
+  return { version: 6, viewer_version: "6.0.1", project: { name: "Untitled project", summary: "" }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [], view: { expanded: [], positions: {}, zoom: 0.7, viewport: [0, 0], tag_filter_mode: "exclude", tag_filter_tags: [] } };
 }
 
 export function flatten(nodes: MapNode[], parentId?: string, depth = 0, output: IndexedNode[] = []): IndexedNode[] {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createNode, emptyMap, flatten, guidId, insertNode, removeNode, updateNode, type MapNode } from "./model";
+import { createNode, emptyMap, flatten, guidId, insertNode, nodePassesTagFilter, removeNode, updateNode, type MapNode } from "./model";
 
 const node = (id: string, children: MapNode[] = []): MapNode => ({ id, title: id, tags: ["test"], main_tag: "test", summary: "", created_at: "2026-01-01T00:00:00.000Z", modified_at: "2026-01-01T00:00:00.000Z", children, links: [] });
 
@@ -31,4 +31,14 @@ test("node creation and updates own timestamps", () => {
   const created = createNode(emptyMap(), "Stable title"); assert.equal(created.created_at, created.modified_at);
   const updated = updateNode([created], created.id, { title: "Changed title" }, "2026-09-15T12:00:00.000Z")[0];
   assert.equal(updated.id, created.id); assert.equal(updated.created_at, created.created_at); assert.equal(updated.modified_at, "2026-09-15T12:00:00.000Z");
+});
+
+test("tag filtering supports inclusive and exclusive modes", () => {
+  const candidate = { tags: ["implementation", "active"] }; const selected = new Set(["implementation"]); const unrelated = new Set(["documentation"]);
+  assert.equal(nodePassesTagFilter(candidate, "include", selected), true);
+  assert.equal(nodePassesTagFilter(candidate, "include", unrelated), false);
+  assert.equal(nodePassesTagFilter(candidate, "exclude", selected), false);
+  assert.equal(nodePassesTagFilter(candidate, "exclude", unrelated), true);
+  assert.equal(nodePassesTagFilter(candidate, "include", new Set()), false);
+  assert.equal(nodePassesTagFilter(candidate, "exclude", new Set()), true);
 });
