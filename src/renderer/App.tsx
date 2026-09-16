@@ -3,10 +3,11 @@ import { Actions, DockLocation, Layout, Model, type IJsonModel, type TabNode } f
 import "flexlayout-react/style/dark.css";
 import { createNode, emptyMap, flatten, insertNode, type IndexedNode, type MapDocument, type MapNode, nodePassesTagFilter, removeNode, updateNode } from "./model";
 import { NodeEditor } from "./NodeEditor";
+import { AssistantPanel } from "./AssistantPanel";
 
-type PanelId = "graph" | "inspector" | "outline" | "search" | "activity";
-const PANEL_IDS: PanelId[] = ["graph", "inspector", "outline", "search", "activity"];
-const panelLabel: Record<PanelId, string> = { graph: "Graph", inspector: "Inspector", outline: "Outline", search: "Search", activity: "Activity" };
+type PanelId = "graph" | "inspector" | "outline" | "search" | "activity" | "assistant";
+const PANEL_IDS: PanelId[] = ["graph", "inspector", "outline", "search", "activity", "assistant"];
+const panelLabel: Record<PanelId, string> = { graph: "Graph", inspector: "Inspector", outline: "Outline", search: "Search", activity: "Activity", assistant: "AI Assistant" };
 
 const defaultWorkspace: IJsonModel = { global: { splitterSize: 5, tabEnableClose: true, tabEnableRename: false, tabEnablePopout: true, tabEnablePopoutIcon: true, tabSetEnableMaximize: true }, borders: [], layout: { type: "row", children: [
   { type: "tabset", id: "graph-tabset", weight: 70, children: [{ type: "tab", id: "panel-graph", name: "Graph", component: "graph", enablePopout: true }] },
@@ -16,6 +17,7 @@ const defaultWorkspace: IJsonModel = { global: { splitterSize: 5, tabEnableClose
       { type: "tab", id: "panel-outline", name: "Outline", component: "outline", enablePopout: true },
       { type: "tab", id: "panel-search", name: "Search", component: "search", enablePopout: true },
       { type: "tab", id: "panel-activity", name: "Activity", component: "activity", enablePopout: true },
+      { type: "tab", id: "panel-assistant", name: "AI Assistant", component: "assistant", enablePopout: true },
     ] },
   ] },
 ] } };
@@ -113,6 +115,7 @@ function Panel({ id, document, selectedId, setSelected, applyDocument, activity,
   if (id === "inspector") return <Inspector node={selected} allNodes={all} onApply={(values) => selected && applyNode(selected.id, values)} onSelectNode={setSelected} />;
   if (id === "outline") return <Outline nodes={all} selectedId={selectedId} onSelect={setSelected} />;
   if (id === "search") return <Search nodes={all} onSelect={setSelected} />;
+  if (id === "assistant") return <AssistantPanel />;
   return <section className="panel-content"><p className="eyebrow">ACTIVITY</p><div className="activity">{activity.length ? activity.map((entry, index) => <div key={`${entry}-${index}`}>{entry}</div>) : <p>No events in this session.</p>}</div></section>;
 }
 
@@ -123,7 +126,7 @@ export function App() {
   const scheduleSave = useCallback((value: MapDocument, message?: string, immediate = false) => { pendingSave.current = value; if (saveTimer.current) clearTimeout(saveTimer.current); const flush = () => { const pending = pendingSave.current; pendingSave.current = undefined; if (pending) enqueueSave(pending, message); }; if (immediate) flush(); else saveTimer.current = setTimeout(flush, 120); }, [enqueueSave]);
   const applyDocument = useCallback((value: MapDocument, message?: string, immediate = false) => { const current = documentRef.current; if (value !== current) { undo.current.push(current); if (undo.current.length > 100) undo.current.shift(); redo.current = []; } documentRef.current = value; setDocument(value); if (message) record(`User: ${message}`); scheduleSave(value, message, immediate); }, [record, scheduleSave]);
   const load = useCallback((result: { path: string; data: unknown }, source = "Opened") => { const incoming = result.data as MapDocument; const fitted = { ...incoming, view: { ...incoming.view, zoom: 0.7, viewport: [0, 0] as [number, number] } }; documentRef.current = fitted; setDocument(fitted); mapPathRef.current = result.path; setMapPath(result.path); setSelectedId(undefined); undo.current = []; redo.current = []; const model = ensureGraph(workspaceModel(fitted.view.workspace)); setDockModel(model); setFitToken((value) => value + 1); record(`${source}: ${result.path}`); }, [record]);
-  useEffect(() => { void window.mindmap.loadDefault().then((result) => load(result, "Opened project")).catch((error) => record(`Open failed: ${String(error)}`)); return window.mindmap.onExternalChange((result) => { if (result.path !== mapPathRef.current) return; saveGeneration.current += 1; if (saveTimer.current) clearTimeout(saveTimer.current); pendingSave.current = undefined; const incoming = result.data as MapDocument; const currentWorkspace = JSON.stringify(documentRef.current.view.workspace); documentRef.current = incoming; setDocument(incoming); if (JSON.stringify(incoming.view.workspace) !== currentWorkspace) setDockModel(ensureGraph(workspaceModel(incoming.view.workspace))); record("External change loaded from project file"); }); }, [load, record]);
+  useEffect(() => { void window.mindmap.loadDefault().then((result) => load(result, "Opened project")).catch((error) => record(`Open failed: ${String(error)}`)); return window.mindmap.onExternalChange((result) => { if (result.path !== mapPathRef.current) return; saveGeneration.current += 1; if (saveTimer.current) clearTimeout(saveTimer.current); pendingSave.current = undefined; const incoming = result.data as MapDocument; const currentWorkspace = JSON.stringify(documentRef.current.view.workspace); documentRef.current = incoming; setDocument(incoming); if (JSON.stringify(incoming.view.workspace) !== currentWorkspace) setDockModel(ensureGraph(workspaceModel(incoming.view.workspace))); record(result.source === "assistant" ? "AI Assistant updated the project file" : "External change loaded from project file"); }); }, [load, record]);
   const openPanel = useCallback((panel: PanelId) => { const tabId = `panel-${panel}`; if (dockModel.getNodeById(tabId)) { dockModel.doAction(Actions.selectTab(tabId)); return; } const destination = dockModel.getActiveTabset() ?? dockModel.getFirstTabSet(); dockModel.doAction(Actions.addNode({ type: "tab", id: tabId, name: panelLabel[panel], component: panel, enablePopout: true }, destination.getId(), DockLocation.CENTER, -1, true)); }, [dockModel]);
   const toggleNodeProperty = useCallback((nodeId: string) => { const tabId = `node-property-${nodeId}`, existing = dockModel.getNodeById(tabId); if (existing) { dockModel.doAction(Actions.deleteTab(tabId)); return; } const node = flatten(documentRef.current.nodes).find((entry) => entry.id === nodeId); if (!node) return; const destination = dockModel.getNodeById("inspector-tabset") ?? dockModel.getActiveTabset() ?? dockModel.getFirstTabSet(); if (!destination) return; dockModel.doAction(Actions.addNode({ type: "tab", id: tabId, name: `Node Property · ${node.title}`, component: "node-property", config: { nodeId }, enablePopout: true }, destination.getId(), DockLocation.CENTER, -1, true)); }, [dockModel]);
   const addNode = useCallback((parent?: string) => { const current = documentRef.current, node = createNode(current); const next = { ...current, nodes: insertNode(current.nodes, node, parent) }; setSelectedId(node.id); applyDocument(next, `Created “${node.title}”`, true); }, [applyDocument]);

@@ -6,7 +6,7 @@ const document = JSON.parse(await readFile(source, "utf8"));
 if (document.version !== 5) throw new Error(`Expected schema 5, received ${document.version}.`);
 
 document.version = 6;
-document.viewer_version = "6.0.1";
+document.viewer_version = "6.3.1";
 document.view = {
   ...document.view,
   tag_filter_mode: "exclude",

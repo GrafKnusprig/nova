@@ -4,7 +4,7 @@ export interface MapNode {
   created_at: string; modified_at: string; children: MapNode[]; links: MapLink[];
 }
 export interface MapDocument {
-  version: 6; viewer_version: "6.0.1";
+  version: 6; viewer_version: "6.3.1";
   project: { name: string; summary: string };
   llm_context: { summary: string; instructions: string[]; tag_definitions: Record<string, string> };
   nodes: MapNode[];
@@ -19,7 +19,7 @@ export function nodePassesTagFilter(node: Pick<MapNode, "tags">, mode: "include"
 }
 
 export function emptyMap(): MapDocument {
-  return { version: 6, viewer_version: "6.0.1", project: { name: "Untitled project", summary: "" }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [], view: { expanded: [], positions: {}, zoom: 0.7, viewport: [0, 0], tag_filter_mode: "exclude", tag_filter_tags: [] } };
+  return { version: 6, viewer_version: "6.3.1", project: { name: "Untitled project", summary: "" }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [], view: { expanded: [], positions: {}, zoom: 0.7, viewport: [0, 0], tag_filter_mode: "exclude", tag_filter_tags: [] } };
 }
 
 export function flatten(nodes: MapNode[], parentId?: string, depth = 0, output: IndexedNode[] = []): IndexedNode[] {

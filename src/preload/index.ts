@@ -6,8 +6,19 @@ contextBridge.exposeInMainWorld("mindmap", {
   open: () => ipcRenderer.invoke("mindmap:open"),
   save: (data: unknown) => ipcRenderer.invoke("mindmap:save", data),
   saveAs: (data: unknown) => ipcRenderer.invoke("mindmap:save-as", data),
-  onExternalChange: (callback: (result: { path: string; data: unknown }) => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, result: { path: string; data: unknown }) => callback(result);
+  assistant: {
+    status: () => ipcRenderer.invoke("assistant:status"),
+    setProvider: (provider: "openai" | "fhgenie") => ipcRenderer.invoke("assistant:set-provider", provider),
+    saveKey: (provider: "openai" | "fhgenie", apiKey: string) => ipcRenderer.invoke("assistant:save-key", provider, apiKey),
+    deleteKey: (provider: "openai" | "fhgenie") => ipcRenderer.invoke("assistant:delete-key", provider),
+    models: (provider: "openai" | "fhgenie") => ipcRenderer.invoke("assistant:models", provider),
+    setModel: (provider: "openai" | "fhgenie", model: string) => ipcRenderer.invoke("assistant:set-model", provider, model),
+    newChat: () => ipcRenderer.invoke("assistant:new-chat"),
+    chat: (messages: Array<{ role: "user" | "assistant"; content: string }>, mode: "draft" | "edit" | "full") => ipcRenderer.invoke("assistant:chat", messages, mode),
+    resolveApproval: (id: string, accepted: boolean) => ipcRenderer.invoke("assistant:resolve-approval", id, accepted),
+  },
+  onExternalChange: (callback: (result: { path: string; data: unknown; source?: "external" | "assistant" }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, result: { path: string; data: unknown; source?: "external" | "assistant" }) => callback(result);
     ipcRenderer.on("mindmap:external-change", listener);
     return () => ipcRenderer.removeListener("mindmap:external-change", listener);
   },

@@ -2,12 +2,13 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from "electron";
 import { promises as fs, watch, type FSWatcher } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { AssistantService, type AssistantMessage, type AssistantMode, type AssistantProvider } from "./assistant";
 
 const SCHEMA_VERSION = 6;
-const VIEWER_VERSION = "6.0.1";
+const VIEWER_VERSION = "6.3.1";
 const TOKEN_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NODE_ID = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
-const PANELS = ["graph", "inspector", "outline", "search", "activity"] as const;
+const PANELS = ["graph", "inspector", "outline", "search", "activity", "assistant"] as const;
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 let currentMapPath: string | undefined; let primaryWindow: BrowserWindow | undefined; let mapWatcher: FSWatcher | undefined; let watchTimer: NodeJS.Timeout | undefined; let lastSerialized = "";
 
@@ -36,14 +37,19 @@ async function startupProjectPath(): Promise<string> {
   for (const candidate of [...new Set(candidates)]) try { await fs.access(candidate); return candidate; } catch { /* Try the next conventional location. */ }
   const result = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); if (result.canceled || !result.filePaths[0]) throw new Error("No knowledge-map project was selected."); return result.filePaths[0];
 }
-function broadcastExternal(filePath: string, data: JsonObject): void { for (const window of BrowserWindow.getAllWindows()) window.webContents.send("mindmap:external-change", { path: filePath, data }); }
+function broadcastExternal(filePath: string, data: JsonObject, source: "external" | "assistant" = "external"): void { for (const window of BrowserWindow.getAllWindows()) window.webContents.send("mindmap:external-change", { path: filePath, data, source }); }
 function startWatcher(filePath: string): void {
   mapWatcher?.close(); if (watchTimer) clearTimeout(watchTimer); const directory = path.dirname(filePath), filename = path.basename(filePath).toLowerCase();
   mapWatcher = watch(directory, (_event, changed) => { if (!changed || changed.toString().toLowerCase() !== filename) return; if (watchTimer) clearTimeout(watchTimer); watchTimer = setTimeout(async () => { try { const raw = await fs.readFile(filePath, "utf8"), data = validateMap(JSON.parse(raw)), next = serialized(data); if (next === lastSerialized) return; lastSerialized = next; broadcastExternal(filePath, data); } catch { /* Editors keep their cached drafts while an external writer is between writes. */ } }, 140); });
 }
 async function readMap(filePath: string) { const resolved = path.resolve(filePath), data = validateMap(JSON.parse(await fs.readFile(resolved, "utf8"))); currentMapPath = resolved; lastSerialized = serialized(data); startWatcher(resolved); await rememberProjectPath(resolved); return { path: resolved, data }; }
-async function atomicWrite(filePath: string, raw: unknown): Promise<void> { const candidate = structuredClone(raw); assertObject(candidate, "Mind-map root"); candidate.viewer_version = VIEWER_VERSION; const data = validateMap(candidate), temporary = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.tmp`); try { await fs.writeFile(temporary, `${JSON.stringify(data, null, 2)}\n`, { encoding: "utf8", flag: "wx" }); await fs.rename(temporary, filePath); lastSerialized = serialized(data); } catch (error) { await fs.rm(temporary, { force: true }).catch(() => undefined); throw error; } }
+async function atomicWrite(filePath: string, raw: unknown): Promise<JsonObject> { const candidate = structuredClone(raw); assertObject(candidate, "Mind-map root"); candidate.viewer_version = VIEWER_VERSION; const data = validateMap(candidate), temporary = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.tmp`); try { await fs.writeFile(temporary, `${JSON.stringify(data, null, 2)}\n`, { encoding: "utf8", flag: "wx" }); await fs.rename(temporary, filePath); lastSerialized = serialized(data); return data; } catch (error) { await fs.rm(temporary, { force: true }).catch(() => undefined); throw error; } }
 async function loadStartupMap() { const filePath = currentMapPath ?? await startupProjectPath(); try { return await readMap(filePath); } catch (error) { const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow; const options: Electron.MessageBoxOptions = { type: "error", title: "Project could not be opened", message: `Could not open ${filePath}`, detail: String(error), buttons: ["Choose another project", "Cancel"], defaultId: 0, cancelId: 1 }; const response = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options); if (response.response !== 0) throw error; const choice = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); if (choice.canceled || !choice.filePaths[0]) throw error; return readMap(choice.filePaths[0]); } }
+const assistant = new AssistantService(
+  () => currentMapPath,
+  async () => { if (!currentMapPath) throw new Error("No mind-map project is open."); return validateMap(JSON.parse(await fs.readFile(currentMapPath, "utf8"))); },
+  async (document) => { if (!currentMapPath) throw new Error("No mind-map project is open."); const data = await atomicWrite(currentMapPath, document); broadcastExternal(currentMapPath, data, "assistant"); },
+);
 
 function rendererUrl(): string { return isDevelopment ? process.env.VITE_DEV_SERVER_URL! : pathToFileURL(path.join(__dirname, "../../dist/index.html")).toString(); }
 function secureWindow(options: Electron.BrowserWindowConstructorOptions): BrowserWindow {
@@ -58,16 +64,29 @@ async function showAbout(): Promise<void> {
   const result = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options);
   if (result.response === 0) await shell.openExternal("https://philippraven.com");
 }
+function stringValue(value: unknown, label: string): string { if (typeof value !== "string") throw new Error(`${label} must be a string.`); return value; }
+function assistantMode(value: unknown): AssistantMode { if (value !== "draft" && value !== "edit" && value !== "full") throw new Error("Invalid assistant mode."); return value; }
+function assistantProvider(value: unknown): AssistantProvider { if (value !== "openai" && value !== "fhgenie") throw new Error("Invalid assistant provider."); return value; }
+function chatMessages(value: unknown): AssistantMessage[] { if (!Array.isArray(value)) throw new Error("Assistant messages must be an array."); return value.map((raw) => { assertObject(raw, "assistant message"); if ((raw.role !== "user" && raw.role !== "assistant") || typeof raw.content !== "string") throw new Error("Assistant message is invalid."); return { role: raw.role, content: raw.content }; }); }
 
 function registerIpc(): void {
   ipcMain.handle("mindmap:load-default", async () => loadStartupMap());
   ipcMain.handle("mindmap:open", async () => { const result = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); return result.canceled ? undefined : readMap(result.filePaths[0]); });
   ipcMain.handle("mindmap:save", async (_event, data: unknown) => { if (!currentMapPath) throw new Error("Choose a project destination first."); await atomicWrite(currentMapPath, data); return currentMapPath; });
   ipcMain.handle("mindmap:save-as", async (_event, data: unknown) => { const result = await dialog.showSaveDialog({ title: "Save knowledge-map project", defaultPath: currentMapPath ?? "mindmap.json", filters: [{ name: "Mind-map project", extensions: ["json"] }] }); if (result.canceled || !result.filePath) return undefined; const resolved = path.resolve(result.filePath); await atomicWrite(resolved, data); currentMapPath = resolved; startWatcher(resolved); await rememberProjectPath(resolved); return resolved; });
+  ipcMain.handle("assistant:status", () => assistant.status());
+  ipcMain.handle("assistant:set-provider", (_event, provider: unknown) => assistant.setProvider(assistantProvider(provider)));
+  ipcMain.handle("assistant:save-key", (_event, provider: unknown, apiKey: unknown) => assistant.saveKey(assistantProvider(provider), stringValue(apiKey, "API key")));
+  ipcMain.handle("assistant:delete-key", (_event, provider: unknown) => assistant.deleteKey(assistantProvider(provider)));
+  ipcMain.handle("assistant:models", (_event, provider: unknown) => assistant.models(assistantProvider(provider)));
+  ipcMain.handle("assistant:set-model", (_event, provider: unknown, model: unknown) => assistant.setModel(assistantProvider(provider), stringValue(model, "model")));
+  ipcMain.handle("assistant:new-chat", () => assistant.newChat());
+  ipcMain.handle("assistant:chat", (_event, rawMessages: unknown, rawMode: unknown) => assistant.chat(chatMessages(rawMessages), assistantMode(rawMode)));
+  ipcMain.handle("assistant:resolve-approval", (_event, id: unknown, accepted: unknown) => assistant.resolveApproval(stringValue(id, "approval id"), Boolean(accepted)));
 }
 
 function createMenu(): void {
-  const panelItems = PANELS.map((panel) => ({ label: panel[0].toUpperCase() + panel.slice(1), click: () => sendCommand(`show-panel:${panel}`) }));
+  const panelItems = PANELS.map((panel) => ({ label: panel === "assistant" ? "AI Assistant" : panel[0].toUpperCase() + panel.slice(1), click: () => sendCommand(`show-panel:${panel}`) }));
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: "File", submenu: [{ label: "New", accelerator: "Ctrl+N", click: () => sendCommand("new") }, { label: "Open…", accelerator: "Ctrl+O", click: () => sendCommand("open") }, { label: "Save now", accelerator: "Ctrl+S", click: () => sendCommand("save") }, { label: "Save As…", accelerator: "Ctrl+Shift+S", click: () => sendCommand("save-as") }, { type: "separator" }, { role: "quit" }] },
     { label: "Edit", submenu: [{ label: "Undo", accelerator: "Ctrl+Z", click: () => sendCommand("undo") }, { label: "Redo", accelerator: "Ctrl+Y", click: () => sendCommand("redo") }, { type: "separator" }, { role: "cut" }, { role: "copy" }, { role: "paste" }, { role: "selectAll" }] },
