@@ -4,8 +4,8 @@ export interface MapNode {
   created_at: string; modified_at: string; children: MapNode[]; links: MapLink[];
 }
 export interface MapDocument {
-  version: 6; viewer_version: "6.3.1";
-  project: { name: string; summary: string };
+  version: 7; viewer_version: "7.0.0";
+  project: { root_node_id: string };
   llm_context: { summary: string; instructions: string[]; tag_definitions: Record<string, string> };
   nodes: MapNode[];
   view: { expanded: string[]; positions: Record<string, [number, number]>; zoom: number; viewport: [number, number]; tag_filter_mode: "include" | "exclude"; tag_filter_tags: string[]; workspace?: unknown };
@@ -19,8 +19,12 @@ export function nodePassesTagFilter(node: Pick<MapNode, "tags">, mode: "include"
 }
 
 export function emptyMap(): MapDocument {
-  return { version: 6, viewer_version: "6.3.1", project: { name: "Untitled project", summary: "" }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [], view: { expanded: [], positions: {}, zoom: 0.7, viewport: [0, 0], tag_filter_mode: "exclude", tag_filter_tags: [] } };
+  const timestamp = nowIso(), id = crypto.randomUUID().toLowerCase();
+  const root: MapNode = { id, title: "Untitled project", tags: ["concept", "project-governance"], main_tag: "project-governance", summary: "", created_at: timestamp, modified_at: timestamp, children: [], links: [] };
+  return { version: 7, viewer_version: "7.0.0", project: { root_node_id: id }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [root], view: { expanded: [id], positions: { [id]: [600, 400] }, zoom: 0.7, viewport: [0, 0], tag_filter_mode: "exclude", tag_filter_tags: [] } };
 }
+
+export function projectRoot(document: MapDocument): MapNode { const root = document.nodes.find((node) => node.id === document.project.root_node_id); if (!root) throw new Error("Project root node is unavailable."); return root; }
 
 export function flatten(nodes: MapNode[], parentId?: string, depth = 0, output: IndexedNode[] = []): IndexedNode[] {
   for (const node of nodes) { output.push({ ...node, parentId, depth }); flatten(node.children, node.id, depth + 1, output); }

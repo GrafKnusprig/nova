@@ -2,10 +2,11 @@ import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, f
 
 interface LayoutNode extends SimulationNodeDatum { id: string; radius: number }
 interface LayoutLink extends SimulationLinkDatum<LayoutNode> { kind: "hierarchy" | "semantic" }
-interface LayoutRequest { nodes: Array<{ id: string; radius: number; x: number; y: number }>; links: Array<{ source: string; target: string; kind: "hierarchy" | "semantic" }> }
+interface LayoutRequest { rootId: string; nodes: Array<{ id: string; radius: number; x: number; y: number }>; links: Array<{ source: string; target: string; kind: "hierarchy" | "semantic" }> }
 
 self.onmessage = (event: MessageEvent<LayoutRequest>) => {
   const nodes: LayoutNode[] = event.data.nodes.map((node) => ({ ...node }));
+  const root = nodes.find((node) => node.id === event.data.rootId); if (root) { root.fx = 600; root.fy = 400; }
   const links: LayoutLink[] = event.data.links.map((link) => ({ ...link }));
   const linkForce = forceLink<LayoutNode, LayoutLink>(links)
     .id((node) => node.id)

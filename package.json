@@ -1,8 +1,8 @@
 {
   "name": "mindmap-electron",
-  "version": "6.3.1",
+  "version": "7.0.0",
   "private": true,
-  "description": "Electron-based desktop viewer and editor for schema-6 knowledge-map projects.",
+  "description": "Electron-based desktop viewer and editor for schema-7 knowledge-map projects.",
   "main": "dist-electron/main/index.js",
   "scripts": {
     "dev": "npm run build:electron && npm exec -- concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",

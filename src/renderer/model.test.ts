@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createNode, emptyMap, flatten, guidId, insertNode, nodePassesTagFilter, removeNode, updateNode, type MapNode } from "./model";
+import { createNode, emptyMap, flatten, guidId, insertNode, nodePassesTagFilter, projectRoot, removeNode, updateNode, type MapNode } from "./model";
 
 const node = (id: string, children: MapNode[] = []): MapNode => ({ id, title: id, tags: ["test"], main_tag: "test", summary: "", created_at: "2026-01-01T00:00:00.000Z", modified_at: "2026-01-01T00:00:00.000Z", children, links: [] });
 
@@ -41,4 +41,19 @@ test("tag filtering supports inclusive and exclusive modes", () => {
   assert.equal(nodePassesTagFilter(candidate, "exclude", unrelated), true);
   assert.equal(nodePassesTagFilter(candidate, "include", new Set()), false);
   assert.equal(nodePassesTagFilter(candidate, "exclude", new Set()), true);
+});
+
+test("new projects contain one expanded project root", () => {
+  const document = emptyMap(); const root = projectRoot(document);
+  assert.equal(document.nodes.length, 1);
+  assert.equal(document.project.root_node_id, root.id);
+  assert.equal(root.title, "Untitled project");
+  assert.deepEqual(document.view.expanded, [root.id]);
+});
+
+test("main topics are inserted beneath the project root", () => {
+  const document = emptyMap(), root = projectRoot(document), topic = createNode(document, "Main topic");
+  const nodes = insertNode(document.nodes, topic, root.id);
+  assert.equal(nodes.length, 1);
+  assert.equal(nodes[0].children[0].id, topic.id);
 });
