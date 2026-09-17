@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createNode, emptyMap, flatten, guidId, insertNode, nodePassesTagFilter, projectRoot, removeNode, updateNode, type MapNode } from "./model";
+import { createNode, emptyMap, flatten, guidId, insertNode, nodeLabelMetrics, nodePassesTagFilter, projectRoot, removeNode, tagButtonSelected, updateNode, type MapNode } from "./model";
 
 const node = (id: string, children: MapNode[] = []): MapNode => ({ id, title: id, tags: ["test"], main_tag: "test", summary: "", created_at: "2026-01-01T00:00:00.000Z", modified_at: "2026-01-01T00:00:00.000Z", children, links: [] });
 
@@ -41,6 +41,23 @@ test("tag filtering supports inclusive and exclusive modes", () => {
   assert.equal(nodePassesTagFilter(candidate, "exclude", unrelated), true);
   assert.equal(nodePassesTagFilter(candidate, "include", new Set()), false);
   assert.equal(nodePassesTagFilter(candidate, "exclude", new Set()), true);
+});
+
+test("exclusive filter buttons select the tags that remain visible", () => {
+  const storedExcluded = new Set(["hidden"]);
+  assert.equal(tagButtonSelected("visible", "exclude", storedExcluded), true);
+  assert.equal(tagButtonSelected("hidden", "exclude", storedExcluded), false);
+  assert.equal(tagButtonSelected("hidden", "include", storedExcluded), true);
+  assert.equal(tagButtonSelected("visible", "include", storedExcluded), false);
+});
+
+test("node label boxes remain inside the circle with readable minimum fonts", () => {
+  const small = nodeLabelMetrics(48, true), cornerRadius = Math.hypot(small.width / 2, small.height / 2);
+  assert.ok(cornerRadius < 48);
+  assert.ok(small.titleFontSize >= 11);
+  assert.ok(small.tagFontSize >= 7.5);
+  assert.equal(small.titleLines, 2);
+  assert.equal(nodeLabelMetrics(80, true).titleLines, 3);
 });
 
 test("new projects contain one expanded project root", () => {

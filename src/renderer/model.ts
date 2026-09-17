@@ -4,7 +4,7 @@ export interface MapNode {
   created_at: string; modified_at: string; children: MapNode[]; links: MapLink[];
 }
 export interface MapDocument {
-  version: 7; viewer_version: "7.1.1";
+  version: 7; viewer_version: "7.2.0";
   project: { root_node_id: string };
   llm_context: { summary: string; instructions: string[]; tag_definitions: Record<string, string> };
   nodes: MapNode[];
@@ -18,10 +18,16 @@ export function nodePassesTagFilter(node: Pick<MapNode, "tags">, mode: "include"
   const matches = node.tags.some((tag) => selectedTags.has(tag)); return mode === "include" ? matches : !matches;
 }
 
+export function tagButtonSelected(tag: string, mode: "include" | "exclude", filterTags: ReadonlySet<string>): boolean { return mode === "include" ? filterTags.has(tag) : !filterTags.has(tag); }
+
+export function nodeLabelMetrics(radius: number, detailed: boolean): { width: number; height: number; titleFontSize: number; tagFontSize: number; titleLines: number } {
+  return { width: radius * 1.68, height: radius, titleFontSize: Math.max(11, Math.min(15, radius * 0.24)), tagFontSize: Math.max(7.5, Math.min(10, radius * 0.15)), titleLines: detailed && radius < 60 ? 2 : 3 };
+}
+
 export function emptyMap(): MapDocument {
   const timestamp = nowIso(), id = crypto.randomUUID().toLowerCase();
   const root: MapNode = { id, title: "Untitled project", tags: ["concept", "project-governance"], main_tag: "project-governance", summary: "", created_at: timestamp, modified_at: timestamp, children: [], links: [] };
-  return { version: 7, viewer_version: "7.1.1", project: { root_node_id: id }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [root], view: { expanded: [id], positions: { [id]: [600, 400] }, zoom: 0.7, viewport: [0, 0], tag_filter_mode: "exclude", tag_filter_tags: [] } };
+  return { version: 7, viewer_version: "7.2.0", project: { root_node_id: id }, llm_context: { summary: "", instructions: [], tag_definitions: {} }, nodes: [root], view: { expanded: [id], positions: { [id]: [600, 400] }, zoom: 0.7, viewport: [0, 0], tag_filter_mode: "exclude", tag_filter_tags: [] } };
 }
 
 export function projectRoot(document: MapDocument): MapNode { const root = document.nodes.find((node) => node.id === document.project.root_node_id); if (!root) throw new Error("Project root node is unavailable."); return root; }
