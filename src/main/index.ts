@@ -3,29 +3,12 @@ import { promises as fs, watch, type FSWatcher } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { AssistantService, type AssistantMessage, type AssistantMode, type AssistantProvider } from "./assistant";
+import { assertObject, validateMap, VIEWER_VERSION, writeProjectAtomic, type JsonObject } from "./project";
+import { runCli } from "./cli";
 
-const SCHEMA_VERSION = 7;
-const VIEWER_VERSION = "7.0.0";
-const TOKEN_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const NODE_ID = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 const PANELS = ["graph", "inspector", "outline", "search", "activity", "assistant"] as const;
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 let currentMapPath: string | undefined; let primaryWindow: BrowserWindow | undefined; let mapWatcher: FSWatcher | undefined; let watchTimer: NodeJS.Timeout | undefined; let lastSerialized = "";
-
-type JsonObject = Record<string, unknown>;
-function assertObject(value: unknown, label: string): asserts value is JsonObject { if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} must be an object.`); }
-function isIsoDate(value: unknown): value is string { return typeof value === "string" && value.length >= 20 && !Number.isNaN(Date.parse(value)); }
-
-function validateMap(value: unknown): JsonObject {
-  assertObject(value, "Mind-map root"); if (value.version !== SCHEMA_VERSION) throw new Error(`Unsupported schema ${String(value.version)}; schema ${SCHEMA_VERSION} is required.`); if (typeof value.viewer_version !== "string" || !value.viewer_version.trim()) throw new Error("viewer_version must be a non-empty string.");
-  assertObject(value.project, "project"); assertObject(value.llm_context, "llm_context"); assertObject(value.view, "view"); if (!Array.isArray(value.nodes)) throw new Error("nodes must be an array.");
-  if (typeof value.project.root_node_id !== "string" || !NODE_ID.test(value.project.root_node_id) || Object.keys(value.project).length !== 1) throw new Error("project must contain only a valid root_node_id identity field."); if (typeof value.llm_context.summary !== "string" || !Array.isArray(value.llm_context.instructions) || value.llm_context.instructions.some((entry) => typeof entry !== "string")) throw new Error("llm_context is invalid."); assertObject(value.llm_context.tag_definitions, "llm_context.tag_definitions"); for (const [tag, description] of Object.entries(value.llm_context.tag_definitions)) if (!TOKEN_ID.test(tag) || typeof description !== "string") throw new Error(`Invalid tag definition: ${tag}`);
-  if ("hidden_tags" in value.view || !Array.isArray(value.view.expanded) || (value.view.tag_filter_mode !== "include" && value.view.tag_filter_mode !== "exclude") || !Array.isArray(value.view.tag_filter_tags) || new Set(value.view.tag_filter_tags).size !== value.view.tag_filter_tags.length || value.view.tag_filter_tags.some((tag) => typeof tag !== "string" || !TOKEN_ID.test(tag))) throw new Error("view expansion or tag filters are invalid."); assertObject(value.view.positions, "view.positions"); if (typeof value.view.zoom !== "number" || !Array.isArray(value.view.viewport) || value.view.viewport.length !== 2 || value.view.viewport.some((entry) => typeof entry !== "number")) throw new Error("view geometry is invalid."); if (value.view.workspace !== undefined) assertObject(value.view.workspace, "view.workspace");
-  const ids = new Set<string>(); const nodes: JsonObject[] = [];
-  const visit = (raw: unknown) => { assertObject(raw, "node"); if (typeof raw.id !== "string" || !NODE_ID.test(raw.id) || ids.has(raw.id)) throw new Error(`Invalid or duplicate node ID: ${String(raw.id)}`); ids.add(raw.id); nodes.push(raw); for (const obsolete of ["type", "status", "categories", "date", "rationale_source"]) if (obsolete in raw) throw new Error(`Node ${raw.id} contains obsolete schema-4 field ${obsolete}.`); for (const key of ["title", "summary", "main_tag"] as const) if (typeof raw[key] !== "string") throw new Error(`Node ${raw.id}.${key} must be a string.`); if (!Array.isArray(raw.tags) || raw.tags.length === 0 || new Set(raw.tags).size !== raw.tags.length || raw.tags.some((entry) => typeof entry !== "string" || !TOKEN_ID.test(entry)) || !raw.tags.includes(raw.main_tag)) throw new Error(`Node ${raw.id} has invalid tags or main_tag.`); if (raw.rationale !== undefined && typeof raw.rationale !== "string") throw new Error(`Node ${raw.id}.rationale must be a string.`); if (!isIsoDate(raw.created_at) || !isIsoDate(raw.modified_at)) throw new Error(`Node ${raw.id} requires valid created_at and modified_at timestamps.`); if (!Array.isArray(raw.children) || !Array.isArray(raw.links)) throw new Error(`Node ${raw.id} has invalid children or links.`); raw.children.forEach(visit); };
-  value.nodes.forEach(visit); if (value.nodes.length !== 1 || (value.nodes[0] as JsonObject).id !== value.project.root_node_id) throw new Error("nodes must contain exactly the designated project root node."); for (const node of nodes) for (const rawLink of node.links as unknown[]) { assertObject(rawLink, `Link on ${String(node.id)}`); if (typeof rawLink.target !== "string" || !ids.has(rawLink.target) || rawLink.target === node.id || typeof rawLink.relation !== "string" || !TOKEN_ID.test(rawLink.relation)) throw new Error(`Node ${String(node.id)} has an invalid link.`); }
-  for (const id of value.view.expanded as unknown[]) if (typeof id !== "string" || !ids.has(id)) throw new Error(`view.expanded contains unknown node ${String(id)}.`); if (!(value.view.expanded as unknown[]).includes(value.project.root_node_id)) throw new Error("The project root must remain expanded."); return value;
-}
 
 function serialized(value: JsonObject): string { return JSON.stringify(value); }
 function settingsPath(): string { return path.join(app.getPath("userData"), "settings.json"); }
@@ -43,7 +26,7 @@ function startWatcher(filePath: string): void {
   mapWatcher = watch(directory, (_event, changed) => { if (!changed || changed.toString().toLowerCase() !== filename) return; if (watchTimer) clearTimeout(watchTimer); watchTimer = setTimeout(async () => { try { const raw = await fs.readFile(filePath, "utf8"), data = validateMap(JSON.parse(raw)), next = serialized(data); if (next === lastSerialized) return; lastSerialized = next; broadcastExternal(filePath, data); } catch { /* Editors keep their cached drafts while an external writer is between writes. */ } }, 140); });
 }
 async function readMap(filePath: string) { const resolved = path.resolve(filePath), data = validateMap(JSON.parse(await fs.readFile(resolved, "utf8"))); currentMapPath = resolved; lastSerialized = serialized(data); startWatcher(resolved); await rememberProjectPath(resolved); return { path: resolved, data }; }
-async function atomicWrite(filePath: string, raw: unknown): Promise<JsonObject> { const candidate = structuredClone(raw); assertObject(candidate, "Mind-map root"); candidate.viewer_version = VIEWER_VERSION; const data = validateMap(candidate), temporary = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.tmp`); try { await fs.writeFile(temporary, `${JSON.stringify(data, null, 2)}\n`, { encoding: "utf8", flag: "wx" }); await fs.rename(temporary, filePath); lastSerialized = serialized(data); return data; } catch (error) { await fs.rm(temporary, { force: true }).catch(() => undefined); throw error; } }
+async function atomicWrite(filePath: string, raw: unknown): Promise<JsonObject> { const expected = currentMapPath && path.resolve(filePath) === path.resolve(currentMapPath) ? lastSerialized : undefined; const data = await writeProjectAtomic(filePath, raw, expected); lastSerialized = serialized(data); return data; }
 async function loadStartupMap() { const filePath = currentMapPath ?? await startupProjectPath(); try { return await readMap(filePath); } catch (error) { const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow; const options: Electron.MessageBoxOptions = { type: "error", title: "Project could not be opened", message: `Could not open ${filePath}`, detail: String(error), buttons: ["Choose another project", "Cancel"], defaultId: 0, cancelId: 1 }; const response = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options); if (response.response !== 0) throw error; const choice = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); if (choice.canceled || !choice.filePaths[0]) throw error; return readMap(choice.filePaths[0]); } }
 const assistant = new AssistantService(
   () => currentMapPath,
@@ -96,5 +79,6 @@ function createMenu(): void {
   ]));
 }
 
-app.whenReady().then(() => { registerIpc(); createMenu(); createMainWindow(); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); });
-app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => mapWatcher?.close());
+const cliIndex = process.argv.indexOf("cli");
+if (cliIndex >= 0) app.whenReady().then(async () => { const code = await runCli(process.argv.slice(cliIndex + 1)); app.exit(code); });
+else { app.whenReady().then(() => { registerIpc(); createMenu(); createMainWindow(); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); }); app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => mapWatcher?.close()); }
