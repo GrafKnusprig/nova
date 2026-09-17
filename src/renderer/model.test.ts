@@ -4,6 +4,7 @@ import {
   ancestorPath,
   arrangeRevealedNodes,
   createNode,
+  descendantIds,
   emptyMap,
   flatten,
   guidId,
@@ -38,6 +39,15 @@ test("recursive insertion and update retain hierarchy", () => {
   const updated = updateNode(inserted, "child", { title: "Changed" });
   assert.equal(updated[0].children[0].title, "Changed");
   assert.equal(flatten(updated)[1].parentId, "root");
+});
+
+test("descendant IDs include the complete subtree but not its parent", () => {
+  const roots = [node("root", [node("child", [node("grandchild")])])];
+  assert.deepEqual([...descendantIds(roots, "root")].sort(), [
+    "child",
+    "grandchild",
+  ]);
+  assert.deepEqual([...descendantIds(roots, "child")], ["grandchild"]);
 });
 
 test("subtree deletion removes incoming links to every descendant", () => {

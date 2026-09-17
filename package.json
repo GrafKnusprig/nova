@@ -1,6 +1,6 @@
 {
   "name": "mindmap-electron",
-  "version": "7.5.3",
+  "version": "7.6.1",
   "private": true,
   "description": "Electron-based desktop viewer and editor for schema-7 knowledge-map projects.",
   "main": "dist-electron/main/index.js",

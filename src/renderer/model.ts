@@ -16,7 +16,7 @@ export interface MapNode {
 }
 export interface MapDocument {
   version: 7;
-  viewer_version: "7.5.3";
+  viewer_version: "7.6.1";
   project: { root_node_id: string };
   llm_context: {
     summary: string;
@@ -222,7 +222,7 @@ export function emptyMap(): MapDocument {
   };
   return {
     version: 7,
-    viewer_version: "7.5.3",
+    viewer_version: "7.6.1",
     project: { root_node_id: id },
     llm_context: { summary: "", instructions: [], tag_definitions: {} },
     nodes: [root],
@@ -256,6 +256,11 @@ export function flatten(
     flatten(node.children, node.id, depth + 1, output);
   }
   return output;
+}
+
+export function descendantIds(nodes: MapNode[], nodeId: string): Set<string> {
+  const target = flatten(nodes).find((node) => node.id === nodeId);
+  return new Set(target ? flatten(target.children).map((node) => node.id) : []);
 }
 
 export function updateNode(

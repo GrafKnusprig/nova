@@ -348,7 +348,8 @@ button {
   right: 4px;
 }
 .panel-window-actions button,
-.graph-controls button {
+.graph-controls button,
+.graph-controls select {
   border: 1px solid #33475e;
   border-radius: 3px;
   color: #a8bacb;
@@ -356,7 +357,8 @@ button {
   cursor: pointer;
 }
 .panel-window-actions button:hover,
-.graph-controls button:hover {
+.graph-controls button:hover,
+.graph-controls select:hover {
   color: white;
   border-color: #54c9d5;
 }
@@ -369,11 +371,19 @@ button {
   left: 0.7rem;
   bottom: 0.7rem;
   display: flex;
+  max-width: calc(100% - 16rem);
+  flex-wrap: wrap;
   gap: 0.3rem;
 }
-.graph-controls button {
+.graph-controls button,
+.graph-controls select {
   padding: 0.3rem 0.5rem;
   font-size: 0.68rem;
+}
+.graph-controls button.active {
+  border-color: #62e5ef;
+  color: #eaffff;
+  background: #1e5361;
 }
 .graph-edge.semantic {
   stroke: rgba(155, 79, 238, 0.65);

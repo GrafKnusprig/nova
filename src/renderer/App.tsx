@@ -12,6 +12,7 @@ import {
   ancestorPath,
   arrangeRevealedNodes,
   createNode,
+  descendantIds,
   emptyMap,
   flatten,
   insertNode,
@@ -376,6 +377,7 @@ function GraphPanel({
   onSelect,
   onView,
   onOpenNode,
+  onShowAll,
   relayoutToken,
   fitToken,
 }: {
@@ -385,6 +387,7 @@ function GraphPanel({
   onSelect(id?: string): void;
   onView(view: MapDocument["view"]): void;
   onOpenNode(id: string): void;
+  onShowAll(): void;
   relayoutToken: number;
   fitToken: number;
 }) {
@@ -410,6 +413,10 @@ function GraphPanel({
     () => ({ ...document.view.positions }),
   );
   const [layoutRunning, setLayoutRunning] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<"hierarchy" | "relations">(
+    "hierarchy",
+  );
+  const [compactLayout, setCompactLayout] = useState(false);
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<
     | {
@@ -485,7 +492,10 @@ function GraphPanel({
     setPan(next.viewport);
     commit(positions, next.zoom, next.viewport);
   };
-  const relayout = () => {
+  const relayout = (
+    mode: "hierarchy" | "relations" = layoutMode,
+    compact = compactLayout,
+  ) => {
     if (layoutRunning || nodes.length === 0) return;
     setLayoutRunning(true);
     const worker = new Worker(new URL("./layout.worker.ts", import.meta.url), {
@@ -513,14 +523,13 @@ function GraphPanel({
           target: node.id,
           kind: "hierarchy",
         });
-      for (const link of node.links)
-        if (ids.has(link.target))
-          links.push({
-            source: node.id,
-            target: link.target,
-            kind: "semantic",
-          });
     }
+    for (const edge of semantic.values())
+      links.push({
+        source: edge.source,
+        target: edge.target,
+        kind: "semantic",
+      });
     worker.onmessage = (
       event: MessageEvent<Record<string, [number, number]>>,
     ) => {
@@ -536,6 +545,8 @@ function GraphPanel({
     };
     worker.postMessage({
       rootId: document.project.root_node_id,
+      mode,
+      compact,
       nodes: layoutNodes,
       links,
     });
@@ -583,6 +594,8 @@ function GraphPanel({
     const expanded = new Set(document.view.expanded);
     if (expanded.has(nodeId)) {
       expanded.delete(nodeId);
+      for (const descendantId of descendantIds(document.nodes, nodeId))
+        expanded.delete(descendantId);
       onView({ ...document.view, expanded: [...expanded] });
       return;
     }
@@ -1048,21 +1061,36 @@ function GraphPanel({
       </details>
       <div className="graph-controls">
         <button onClick={fit}>Fit</button>
-        <button onClick={relayout} disabled={layoutRunning}>
+        <select
+          aria-label="Graph layout emphasis"
+          title="Choose which connections dominate re-layout"
+          value={layoutMode}
+          disabled={layoutRunning}
+          onChange={(event) => {
+            const mode = event.target.value as "hierarchy" | "relations";
+            setLayoutMode(mode);
+            relayout(mode, compactLayout);
+          }}
+        >
+          <option value="hierarchy">Hierarchy layout</option>
+          <option value="relations">Relation layout</option>
+        </select>
+        <button onClick={() => relayout()} disabled={layoutRunning}>
           {layoutRunning ? "Laying out…" : "Re-layout"}
         </button>
         <button
-          onClick={() =>
-            onView({
-              ...document.view,
-              expanded: all
-                .filter((node) => node.children.length)
-                .map((node) => node.id),
-            })
-          }
+          className={compactLayout ? "active" : ""}
+          disabled={layoutRunning}
+          title="Remove or restore extra spacing between unrelated groups"
+          onClick={() => {
+            const next = !compactLayout;
+            setCompactLayout(next);
+            relayout(layoutMode, next);
+          }}
         >
-          Show all nodes
+          Compact {compactLayout ? "on" : "off"}
         </button>
+        <button onClick={onShowAll}>Show all nodes</button>
         <button
           onClick={() =>
             onView({
@@ -1269,6 +1297,7 @@ function Panel({
   relayoutToken,
   fitToken,
   openNodeProperty,
+  onShowAll,
 }: {
   id: PanelId;
   document: MapDocument;
@@ -1285,6 +1314,7 @@ function Panel({
   relayoutToken: number;
   fitToken: number;
   openNodeProperty(id: string): void;
+  onShowAll(): void;
 }) {
   const all = flatten(document.nodes);
   const selected = all.find((node) => node.id === selectedId);
@@ -1307,6 +1337,7 @@ function Panel({
           applyDocument({ ...document, view }, undefined, false)
         }
         onOpenNode={openNodeProperty}
+        onShowAll={onShowAll}
         relayoutToken={relayoutToken}
         fitToken={fitToken}
       />
@@ -1605,6 +1636,22 @@ export function App() {
       record(`Saved project as ${saved}`);
     }
   }, [record]);
+  const showAllNodes = useCallback(() => {
+    const current = documentRef.current;
+    applyDocument(
+      {
+        ...current,
+        view: {
+          ...current.view,
+          expanded: flatten(current.nodes)
+            .filter((node) => node.children.length)
+            .map((node) => node.id),
+        },
+      },
+      "Showed all nodes",
+    );
+    setRelayoutToken((value) => value + 1);
+  }, [applyDocument]);
   useEffect(
     () =>
       window.mindmap.onCommand((command) => {
@@ -1654,19 +1701,7 @@ export function App() {
         } else if (command === "fit-graph") setFitToken((value) => value + 1);
         else if (command === "relayout-graph")
           setRelayoutToken((value) => value + 1);
-        else if (command === "show-all")
-          applyDocument(
-            {
-              ...current,
-              view: {
-                ...current.view,
-                expanded: flatten(current.nodes)
-                  .filter((node) => node.children.length)
-                  .map((node) => node.id),
-              },
-            },
-            "Showed all nodes",
-          );
+        else if (command === "show-all") showAllNodes();
         else if (command === "collapse-main-topics")
           applyDocument(
             {
@@ -1685,10 +1720,12 @@ export function App() {
           const expanded = new Set(current.view.expanded);
           if (selectedId === current.project.root_node_id)
             expanded.add(selectedId);
-          else
-            command === "expand-selected"
-              ? expanded.add(selectedId)
-              : expanded.delete(selectedId);
+          else if (command === "expand-selected") expanded.add(selectedId);
+          else {
+            expanded.delete(selectedId);
+            for (const descendantId of descendantIds(current.nodes, selectedId))
+              expanded.delete(descendantId);
+          }
           applyDocument({
             ...current,
             view: { ...current.view, expanded: [...expanded] },
@@ -1706,6 +1743,7 @@ export function App() {
       saveAs,
       scheduleSave,
       selectedId,
+      showAllNodes,
     ],
   );
   const selectNode = useCallback(
@@ -1812,6 +1850,7 @@ export function App() {
       relayoutToken={relayoutToken}
       fitToken={fitToken}
       openNodeProperty={openNodeProperty}
+      onShowAll={showAllNodes}
     />
   );
   const nodePanel = (nodeId: string) => {
