@@ -400,6 +400,17 @@ button {
   stroke-width: 3px;
   filter: drop-shadow(0 0 11px rgba(213, 121, 255, 0.9)) !important;
 }
+.graph-node.navigation-secondary circle {
+  stroke: #8ff7ff !important;
+  stroke-width: 3px;
+  stroke-dasharray: 5 3;
+  filter: drop-shadow(0 0 11px rgba(78, 222, 238, 0.88)) !important;
+}
+.graph-node.inspector-active circle {
+  stroke: #fff1a8 !important;
+  stroke-width: 3.4px;
+  filter: drop-shadow(0 0 12px rgba(255, 218, 92, 0.92)) !important;
+}
 .node-summary {
   overflow: hidden;
   color: #d2dce1;
@@ -473,6 +484,12 @@ button {
 .search-results button:hover {
   color: #e9fbfd;
   background: #1a2a3e;
+}
+.outline button.secondary,
+.search-results button.secondary {
+  border-left: 2px dashed #63dce7;
+  color: #bffaff;
+  background: rgba(42, 116, 132, 0.22);
 }
 .search-results span {
   color: #778aa0;

@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 export const SCHEMA_VERSION = 7;
-export const VIEWER_VERSION = "7.2.0";
+export const VIEWER_VERSION = "7.5.3";
 export const TOKEN_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const NODE_ID = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 

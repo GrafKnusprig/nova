@@ -29,7 +29,7 @@ const rootPosition = positionedRoots.length
   : [600, 400];
 
 document.version = 7;
-document.viewer_version = "7.2.0";
+document.viewer_version = "7.5.3";
 document.project = { root_node_id: rootId };
 document.nodes = [root];
 document.view = {
