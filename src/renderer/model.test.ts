@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { communityEdgeWeight, detectCommunities } from "./layoutModel";
 import {
   ancestorPath,
   arrangeRevealedNodes,
@@ -31,6 +32,36 @@ const node = (id: string, children: MapNode[] = []): MapNode => ({
   modified_at: "2026-01-01T00:00:00.000Z",
   children,
   links: [],
+});
+
+test("layout modes derive communities from weighted graph topology", () => {
+  assert.ok(
+    communityEdgeWeight("hierarchy", "hierarchy") >
+      communityEdgeWeight("semantic", "hierarchy"),
+  );
+  assert.ok(
+    communityEdgeWeight("semantic", "relations") >
+      communityEdgeWeight("hierarchy", "relations"),
+  );
+
+  const groups = detectCommunities(
+    ["a", "b", "c", "d", "e", "f"],
+    [
+      { source: "a", target: "b", kind: "semantic" },
+      { source: "b", target: "c", kind: "semantic" },
+      { source: "c", target: "a", kind: "semantic" },
+      { source: "d", target: "e", kind: "semantic" },
+      { source: "e", target: "f", kind: "semantic" },
+      { source: "f", target: "d", kind: "semantic" },
+      { source: "c", target: "d", kind: "hierarchy" },
+    ],
+    "relations",
+  );
+  assert.equal(groups.get("a"), groups.get("b"));
+  assert.equal(groups.get("b"), groups.get("c"));
+  assert.equal(groups.get("d"), groups.get("e"));
+  assert.equal(groups.get("e"), groups.get("f"));
+  assert.notEqual(groups.get("c"), groups.get("d"));
 });
 
 test("recursive insertion and update retain hierarchy", () => {
