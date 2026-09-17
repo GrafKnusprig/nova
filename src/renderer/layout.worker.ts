@@ -88,7 +88,7 @@ function groupCenters(
       if (right[0] === rootGroup) return 1;
       return right[1] - left[1] || left[0].localeCompare(right[0]);
     }),
-    spacing = request.mode === "hierarchy" ? 650 : 520,
+    spacing = request.mode === "hierarchy" ? 900 : 280,
     goldenAngle = Math.PI * (3 - Math.sqrt(5));
   return new Map(
     groups.map(([group], index) => {
@@ -168,19 +168,20 @@ self.onmessage = (event: MessageEvent<LayoutRequest>) => {
     const groups = hierarchyFocused
         ? hierarchyGroups(request)
         : relationGroups(request),
-      centers = groupCenters(request, groups);
+      centers = groupCenters(request, groups),
+      groupStrength = hierarchyFocused ? 0.16 : 0.075;
     simulation
       .force(
         "groupX",
         forceX<LayoutNode>(
           (node) => centers.get(groups.get(node.id)!)?.[0] ?? 600,
-        ).strength(0.12),
+        ).strength(groupStrength),
       )
       .force(
         "groupY",
         forceY<LayoutNode>(
           (node) => centers.get(groups.get(node.id)!)?.[1] ?? 400,
-        ).strength(0.12),
+        ).strength(groupStrength),
       );
   }
 
