@@ -16,7 +16,7 @@ export interface MapNode {
 }
 export interface MapDocument {
   version: 7;
-  viewer_version: "7.12.0";
+  viewer_version: "8.0.1";
   project: { root_node_id: string };
   llm_context: {
     summary: string;
@@ -261,7 +261,7 @@ export function emptyMap(): MapDocument {
   };
   return {
     version: 7,
-    viewer_version: "7.12.0",
+    viewer_version: "8.0.1",
     project: { root_node_id: id },
     llm_context: { summary: "", instructions: [], tag_definitions: {} },
     nodes: [root],

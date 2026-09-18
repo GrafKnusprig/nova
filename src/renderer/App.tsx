@@ -2091,8 +2091,9 @@ export function App() {
     <main className="app-shell">
       <header className="workspace-header">
         <div className="workspace-title">
-          <span className="brand-mark" />
-          <span>{projectRoot(document).title}</span>
+          <img className="brand-mark" src="./NOVA_icon.png" alt="" />
+          <span className="brand-name">NOVA</span>
+          <span className="brand-project">{projectRoot(document).title}</span>
         </div>
         <div className="workspace-actions">
           {PANEL_IDS.map((id) => (
@@ -2107,7 +2108,7 @@ export function App() {
           model={dockModel}
           supportsPopout
           popoutURL="popout.html"
-          popoutWindowName="Project Knowledge Map"
+          popoutWindowName="NOVA"
           factory={(node: TabNode) =>
             node.getComponent() === "node-property"
               ? nodePanel(

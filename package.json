@@ -1,8 +1,9 @@
 {
-  "name": "mindmap-electron",
-  "version": "7.12.0",
+  "name": "nova",
+  "version": "8.0.1",
   "private": true,
-  "description": "Electron-based desktop viewer and editor for schema-7 knowledge-map projects.",
+  "description": "NOVA — Networked Organization & Visualization Assistant.",
+  "author": "Philipp Unger",
   "main": "dist-electron/main/index.js",
   "scripts": {
     "dev": "npm run build:electron && npm exec -- concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
@@ -40,15 +41,18 @@
     "wait-on": "^9.0.3"
   },
   "build": {
-    "appId": "com.waveletvisualizer.mindmap",
-    "productName": "Project Knowledge Map",
+    "appId": "com.philippraven.nova",
+    "productName": "NOVA",
+    "artifactName": "NOVA-${version}-${arch}.${ext}",
     "files": [
       "dist/**",
       "dist-electron/**",
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "images/NOVA_icon.png",
+      "executableName": "NOVA"
     }
   }
 }

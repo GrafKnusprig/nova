@@ -3,9 +3,9 @@ import path from "node:path";
 import { addLlmInstruction, changeProjectLink, children, createProjectFile, createProjectNode, defineProjectTag, deleteProjectNode, findNode, flattenNodes, generateUniqueId, moveProjectNode, mutateProject, nodes, projectRoot, projectRootId, readProject, removeLlmInstruction, removeProjectTagDefinition, setLlmContextSummary, stringValue, updateProjectNode, VIEWER_VERSION } from "./project";
 
 type Options = Record<string, string | boolean>;
-const HELP = `Project Knowledge Map CLI ${VIEWER_VERSION}
+const HELP = `NOVA CLI ${VIEWER_VERSION}
 
-Usage: ProjectKnowledgeMap.exe cli <command> --project <mindmap.json> [options]
+Usage: NOVA.exe cli <command> --project <mindmap.json> [options]
 
 Commands:
   init         Create a new schema-7 project file. Options: --name, --summary, --summary-file

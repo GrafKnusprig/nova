@@ -1,10 +1,31 @@
 :root {
+  color-scheme: dark;
   color: #e8eef8;
   background: #090d16;
   font-family: Inter, "Segoe UI", sans-serif;
 }
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #405875 #09111d;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #09111d;
+}
+*::-webkit-scrollbar-thumb {
+  border: 2px solid #09111d;
+  border-radius: 999px;
+  background: #405875;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #58789a;
+}
+*::-webkit-scrollbar-corner {
+  background: #09111d;
 }
 html,
 body,
@@ -43,11 +64,27 @@ button {
   white-space: nowrap;
 }
 .brand-mark {
-  width: 13px;
-  height: 13px;
-  border: 1px solid #69e6ec;
-  border-radius: 50%;
-  box-shadow: 0 0 11px rgba(67, 225, 236, 0.78);
+  width: 25px;
+  height: 25px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 0 12px rgba(67, 225, 236, 0.25);
+}
+.brand-name {
+  color: #f2f7ff;
+  font-size: 0.84rem;
+  letter-spacing: 0.14em;
+}
+.brand-project {
+  overflow: hidden;
+  color: #9bacbf;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+.brand-project::before {
+  margin-right: 0.55rem;
+  color: #52647a;
+  content: "—";
 }
 .workspace-actions {
   display: flex;

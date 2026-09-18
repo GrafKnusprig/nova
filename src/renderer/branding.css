@@ -1,0 +1,114 @@
+:root {
+  color-scheme: dark;
+  color: #e9f2ff;
+  background: #050b15;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #3c536f #09111e;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #09111e;
+}
+*::-webkit-scrollbar-thumb {
+  border: 2px solid #09111e;
+  border-radius: 999px;
+  background: #3c536f;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #557495;
+}
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+.splash-page {
+  display: grid;
+  place-items: center;
+  background: #050b15;
+}
+.splash-page img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about-page {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(58, 101, 166, 0.18), transparent 55%),
+    #050b15;
+}
+.about-card {
+  width: min(100%, 690px);
+  overflow: hidden;
+  border: 1px solid #263b58;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(64, 141, 191, 0.13), transparent 45%),
+    #09111e;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.48);
+}
+.about-copy {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 34px 30px 25px;
+}
+.about-icon {
+  width: 82px;
+  height: 82px;
+  border-radius: 19px;
+  box-shadow: 0 0 30px rgba(69, 212, 235, 0.13);
+}
+h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 2.15rem;
+  font-weight: 380;
+  letter-spacing: 0.24em;
+}
+.about-subtitle {
+  max-width: 470px;
+  margin: 8px 0 0;
+  color: #aac4e5;
+  font-size: 0.8rem;
+  letter-spacing: 0.19em;
+  line-height: 1.65;
+  text-transform: uppercase;
+}
+.about-card footer {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 30px 26px;
+  border-top: 1px solid rgba(38, 59, 88, 0.72);
+  color: #8295ad;
+  font-size: 0.76rem;
+}
+.about-card footer div {
+  display: grid;
+  gap: 4px;
+}
+.about-card a {
+  color: #72dfe8;
+  text-decoration: none;
+}
+.about-card a:hover,
+.about-card a:focus-visible {
+  color: #baf8ff;
+  text-decoration: underline;
+  outline: none;
+}

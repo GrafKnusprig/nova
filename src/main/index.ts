@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from "electron";
 import { promises as fs, watch, type FSWatcher } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -8,11 +8,14 @@ import { runCli } from "./cli";
 
 const PANELS = ["graph", "inspector", "outline", "search", "activity", "assistant"] as const;
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
-let currentMapPath: string | undefined; let primaryWindow: BrowserWindow | undefined; let mapWatcher: FSWatcher | undefined; let watchTimer: NodeJS.Timeout | undefined; let lastSerialized = "";
+let currentMapPath: string | undefined; let primaryWindow: BrowserWindow | undefined; let aboutWindow: BrowserWindow | undefined; let mapWatcher: FSWatcher | undefined; let watchTimer: NodeJS.Timeout | undefined; let lastSerialized = "";
+
+app.setName("NOVA");
 
 function serialized(value: JsonObject): string { return JSON.stringify(value); }
 function settingsPath(): string { return path.join(app.getPath("userData"), "settings.json"); }
-async function rememberedProjectPath(): Promise<string | undefined> { try { const value = JSON.parse(await fs.readFile(settingsPath(), "utf8")) as { lastProjectPath?: unknown }; if (typeof value.lastProjectPath !== "string") return undefined; await fs.access(value.lastProjectPath); return path.resolve(value.lastProjectPath); } catch { return undefined; } }
+function settingsCandidates(): string[] { const appData = app.getPath("appData"); return [...new Set([settingsPath(), path.join(appData, "mindmap-electron", "settings.json"), path.join(appData, "Project Knowledge Map", "settings.json")])]; }
+async function rememberedProjectPath(): Promise<string | undefined> { for (const candidate of settingsCandidates()) try { const value = JSON.parse(await fs.readFile(candidate, "utf8")) as { lastProjectPath?: unknown }; if (typeof value.lastProjectPath !== "string") continue; await fs.access(value.lastProjectPath); const resolved = path.resolve(value.lastProjectPath); if (candidate !== settingsPath()) await rememberProjectPath(resolved); return resolved; } catch { /* Try the next settings location. */ } return undefined; }
 async function rememberProjectPath(filePath: string): Promise<void> { const destination = settingsPath(); await fs.mkdir(path.dirname(destination), { recursive: true }); await fs.writeFile(destination, `${JSON.stringify({ lastProjectPath: path.resolve(filePath) }, null, 2)}\n`, "utf8"); }
 async function startupProjectPath(): Promise<string> {
   const remembered = await rememberedProjectPath(); if (remembered) return remembered;
@@ -34,19 +37,17 @@ const assistant = new AssistantService(
   async (document) => { if (!currentMapPath) throw new Error("No mind-map project is open."); const data = await atomicWrite(currentMapPath, document); broadcastExternal(currentMapPath, data, "assistant"); },
 );
 
-function rendererUrl(): string { return isDevelopment ? process.env.VITE_DEV_SERVER_URL! : pathToFileURL(path.join(__dirname, "../../dist/index.html")).toString(); }
+function rendererPageUrl(page = "index.html"): string { return isDevelopment ? new URL(page, `${process.env.VITE_DEV_SERVER_URL!.replace(/\/$/, "")}/`).toString() : pathToFileURL(path.join(__dirname, "../../dist", page)).toString(); }
+function rendererUrl(): string { return rendererPageUrl(); }
+function appIconPath(): string { return isDevelopment ? path.join(app.getAppPath(), "images", "NOVA_icon.png") : path.join(__dirname, "../../dist/NOVA_icon.png"); }
 function secureWindow(options: Electron.BrowserWindowConstructorOptions): BrowserWindow {
-  const window = new BrowserWindow({ backgroundColor: "#0b0f18", ...options, webPreferences: { preload: isDevelopment ? path.join(app.getAppPath(), "dist-electron/preload/index.js") : path.join(__dirname, "../preload/index.js"), contextIsolation: true, nodeIntegration: false, sandbox: true } });
-  window.webContents.on("will-navigate", (event) => event.preventDefault()); window.webContents.setWindowOpenHandler(({ url }) => { const target = new URL(url); const base = new URL(rendererUrl()); if (target.pathname.endsWith("/popout.html") && target.protocol === base.protocol && (target.protocol === "file:" || target.origin === base.origin)) return { action: "allow", overrideBrowserWindowOptions: { backgroundColor: "#0b0f18", webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } } }; if (url.startsWith("https://")) void shell.openExternal(url); return { action: "deny" }; }); return window;
+  const window = new BrowserWindow({ backgroundColor: "#0b0f18", icon: appIconPath(), ...options, webPreferences: { preload: isDevelopment ? path.join(app.getAppPath(), "dist-electron/preload/index.js") : path.join(__dirname, "../preload/index.js"), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  window.webContents.on("will-navigate", (event) => event.preventDefault()); window.webContents.setWindowOpenHandler(({ url }) => { const target = new URL(url); const base = new URL(rendererUrl()); if (target.pathname.endsWith("/popout.html") && target.protocol === base.protocol && (target.protocol === "file:" || target.origin === base.origin)) return { action: "allow", overrideBrowserWindowOptions: { backgroundColor: "#0b0f18", icon: appIconPath(), title: "NOVA", webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } } }; if (url.startsWith("https://")) void shell.openExternal(url); return { action: "deny" }; }); return window;
 }
-function createMainWindow(): void { const window = secureWindow({ title: "Project Knowledge Map", minWidth: 900, minHeight: 600, width: 1440, height: 920, show: false }); primaryWindow = window; window.on("closed", () => { if (primaryWindow === window) primaryWindow = undefined; }); window.once("ready-to-show", () => window.show()); void window.loadURL(rendererUrl()); }
+function createSplashWindow(onShown: (window: BrowserWindow, shownAt: number) => void): BrowserWindow { const window = secureWindow({ title: "NOVA", width: 920, height: 518, frame: false, transparent: false, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false, alwaysOnTop: true, skipTaskbar: true, show: false }); window.once("ready-to-show", () => { if (window.isDestroyed()) return; window.show(); onShown(window, Date.now()); }); void window.loadURL(rendererPageUrl("splash.html")); return window; }
+function createMainWindow(splash?: BrowserWindow, splashShownAt = Date.now()): void { const window = secureWindow({ title: "NOVA", minWidth: 900, minHeight: 600, width: 1440, height: 920, show: false }); primaryWindow = window; window.on("closed", () => { if (primaryWindow === window) primaryWindow = undefined; }); window.once("ready-to-show", () => { const reveal = () => { if (!window.isDestroyed()) window.show(); if (splash && !splash.isDestroyed()) splash.close(); }; const remaining = splash ? Math.max(0, 1000 - (Date.now() - splashShownAt)) : 0; setTimeout(reveal, remaining); }); void window.loadURL(rendererUrl()); }
 function sendCommand(command: string): void { (primaryWindow ?? BrowserWindow.getFocusedWindow())?.webContents.send("mindmap:command", command); }
-async function showAbout(): Promise<void> {
-  const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow;
-  const options: Electron.MessageBoxOptions = { type: "info", title: "About Project Knowledge Map", message: "Project Knowledge Map", detail: `Version ${VIEWER_VERSION}\n\nProgrammer: Philipp Unger\nphilippraven.com`, buttons: ["Visit philippraven.com", "Close"], defaultId: 1, cancelId: 1, noLink: true };
-  const result = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options);
-  if (result.response === 0) await shell.openExternal("https://philippraven.com");
-}
+function showAbout(): void { if (aboutWindow && !aboutWindow.isDestroyed()) { aboutWindow.show(); aboutWindow.focus(); return; } const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow; const window = secureWindow({ title: "About NOVA", parent: owner, modal: Boolean(owner), width: 700, height: 360, minWidth: 580, minHeight: 320, resizable: true, minimizable: false, maximizable: false, autoHideMenuBar: true, show: false }); aboutWindow = window; window.on("closed", () => { if (aboutWindow === window) aboutWindow = undefined; }); window.once("ready-to-show", () => window.show()); void window.loadURL(`${rendererPageUrl("about.html")}?version=${encodeURIComponent(VIEWER_VERSION)}`); }
 function stringValue(value: unknown, label: string): string { if (typeof value !== "string") throw new Error(`${label} must be a string.`); return value; }
 function assistantMode(value: unknown): AssistantMode { if (value !== "draft" && value !== "edit" && value !== "full") throw new Error("Invalid assistant mode."); return value; }
 function assistantProvider(value: unknown): AssistantProvider { if (value !== "openai" && value !== "fhgenie") throw new Error("Invalid assistant provider."); return value; }
@@ -75,10 +76,10 @@ function createMenu(): void {
     { label: "Edit", submenu: [{ label: "Undo", accelerator: "Ctrl+Z", click: () => sendCommand("undo") }, { label: "Redo", accelerator: "Ctrl+Y", click: () => sendCommand("redo") }, { type: "separator" }, { role: "cut" }, { role: "copy" }, { role: "paste" }, { role: "selectAll" }] },
     { label: "Node", submenu: [{ label: "Add main topic", accelerator: "Ctrl+Shift+N", click: () => sendCommand("add-main-topic") }, { label: "Add child node", accelerator: "Ctrl+Alt+N", click: () => sendCommand("add-child") }, { label: "Delete selected", accelerator: "Delete", click: () => sendCommand("delete-selected") }, { type: "separator" }, { label: "Expand selected", click: () => sendCommand("expand-selected") }, { label: "Collapse selected", click: () => sendCommand("collapse-selected") }] },
     { label: "View", submenu: [{ label: "Panels", submenu: [...panelItems, { type: "separator" }, { label: "Reset panel arrangement", click: () => sendCommand("reset-workspace") }] }, { type: "separator" }, { label: "Fit graph", accelerator: "Ctrl+0", click: () => sendCommand("fit-graph") }, { label: "Re-layout graph", accelerator: "Ctrl+L", click: () => sendCommand("relayout-graph") }, { label: "Show all nodes", click: () => sendCommand("show-all") }, { label: "Collapse to main topics", click: () => sendCommand("collapse-main-topics") }, { type: "separator" }, { role: "togglefullscreen" }, { role: "toggleDevTools" }] },
-    { label: "Help", role: "help", submenu: [{ label: "About", click: () => void showAbout() }] },
+    { label: "Help", role: "help", submenu: [{ label: "About NOVA", click: () => showAbout() }] },
   ]));
 }
 
 const cliIndex = process.argv.indexOf("cli");
 if (cliIndex >= 0) app.whenReady().then(async () => { const code = await runCli(process.argv.slice(cliIndex + 1)); app.exit(code); });
-else { app.whenReady().then(() => { registerIpc(); createMenu(); createMainWindow(); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); }); app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => mapWatcher?.close()); }
+else { app.whenReady().then(() => { nativeTheme.themeSource = "dark"; if (process.platform === "win32") app.setAppUserModelId("com.philippraven.nova"); createSplashWindow((splash, shownAt) => { registerIpc(); createMenu(); createMainWindow(splash, shownAt); }); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); }); app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => mapWatcher?.close()); }
