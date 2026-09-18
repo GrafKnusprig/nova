@@ -34,3 +34,15 @@ test("project-specific LLM context mutations remain schema-valid", async (contex
   await mutateProject(file, (document) => { removeLlmInstruction(document, "Preserve measured units."); removeProjectTagDefinition(document, "domain-area"); });
   loaded = await readProject(file); llm = loaded.document.llm_context as Record<string, unknown>; assert.deepEqual(llm.instructions, []); assert.deepEqual(llm.tag_definitions, {}); validateMap(loaded.document);
 });
+
+test("project layout profile is persisted and validated", async (context) => {
+  const { directory, file } = await fixture(); context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const loaded = await readProject(file), view = loaded.document.view as Record<string, unknown>;
+  assert.equal(view.layout_mode, "hierarchy");
+  assert.equal(view.layout_compact, false);
+  view.layout_mode = "relations";
+  view.layout_compact = true;
+  validateMap(loaded.document);
+  view.layout_mode = "invalid";
+  assert.throws(() => validateMap(loaded.document), /layout_mode/);
+});

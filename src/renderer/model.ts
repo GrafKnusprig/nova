@@ -16,7 +16,7 @@ export interface MapNode {
 }
 export interface MapDocument {
   version: 7;
-  viewer_version: "7.8.0";
+  viewer_version: "7.12.0";
   project: { root_node_id: string };
   llm_context: {
     summary: string;
@@ -31,6 +31,8 @@ export interface MapDocument {
     viewport: [number, number];
     tag_filter_mode: "include" | "exclude";
     tag_filter_tags: string[];
+    layout_mode?: "hierarchy" | "relations";
+    layout_compact?: boolean;
     workspace?: unknown;
   };
 }
@@ -98,6 +100,17 @@ export function zoomViewportAroundPoint(
   ];
 }
 
+export function wheelZoomFactor(
+  deltaY: number,
+  deltaMode: number,
+  ctrlKey: boolean,
+): number {
+  const deltaPixels =
+      deltaY * (deltaMode === 1 ? 16 : deltaMode === 2 ? 800 : 1),
+    sensitivity = ctrlKey ? 0.006 : 0.002;
+  return Math.exp(-deltaPixels * sensitivity);
+}
+
 export function ancestorPath(
   nodeId: string,
   parents: ReadonlyMap<string, string | undefined>,
@@ -109,6 +122,32 @@ export function ancestorPath(
     current = parents.get(current);
   }
   return path;
+}
+
+export function outlineVisibleNodes(
+  nodes: readonly IndexedNode[],
+  collapsed: ReadonlySet<string>,
+): IndexedNode[] {
+  const parents = new Map(nodes.map((node) => [node.id, node.parentId]));
+  return nodes.filter((node) => {
+    let parentId = node.parentId;
+    while (parentId) {
+      if (collapsed.has(parentId)) return false;
+      parentId = parents.get(parentId);
+    }
+    return true;
+  });
+}
+
+export function outlineCollapsedNodeIds(
+  nodes: readonly IndexedNode[],
+  expandedIds: ReadonlySet<string>,
+): Set<string> {
+  return new Set(
+    nodes
+      .filter((node) => node.children.length && !expandedIds.has(node.id))
+      .map((node) => node.id),
+  );
 }
 
 export function nearestVisibleNode(
@@ -222,7 +261,7 @@ export function emptyMap(): MapDocument {
   };
   return {
     version: 7,
-    viewer_version: "7.8.0",
+    viewer_version: "7.12.0",
     project: { root_node_id: id },
     llm_context: { summary: "", instructions: [], tag_definitions: {} },
     nodes: [root],
@@ -233,6 +272,8 @@ export function emptyMap(): MapDocument {
       viewport: [0, 0],
       tag_filter_mode: "exclude",
       tag_filter_tags: [],
+      layout_mode: "hierarchy",
+      layout_compact: false,
     },
   };
 }

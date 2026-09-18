@@ -13,10 +13,13 @@ import {
   nodeLabelMetrics,
   nodePassesTagFilter,
   nearestVisibleNode,
+  outlineCollapsedNodeIds,
+  outlineVisibleNodes,
   projectRoot,
   removeNode,
   tagButtonSelected,
   updateNode,
+  wheelZoomFactor,
   zoomViewportAroundPoint,
   type IndexedNode,
   type MapNode,
@@ -174,6 +177,15 @@ test("zooming keeps the graph point beneath the pointer stationary", () => {
   );
 });
 
+test("wheel zoom scales continuously with mouse and trackpad deltas", () => {
+  const trackpadStep = wheelZoomFactor(-1, 0, false),
+    mouseStep = wheelZoomFactor(-100, 0, false);
+  assert.ok(trackpadStep > 1 && trackpadStep < 1.01);
+  assert.ok(mouseStep > trackpadStep);
+  assert.ok(wheelZoomFactor(1, 0, false) < 1);
+  assert.ok(wheelZoomFactor(-1, 1, false) > trackpadStep);
+});
+
 test("navigation resolves ancestor paths and the nearest visible representative", () => {
   const parents = new Map<string, string | undefined>([
     ["root", undefined],
@@ -194,6 +206,41 @@ test("navigation resolves ancestor paths and the nearest visible representative"
   assert.equal(
     nearestVisibleNode("leaf", parents, new Set(["root", "leaf"])),
     "leaf",
+  );
+});
+
+test("outline collapse hides complete subtrees independently of graph state", () => {
+  const roots = [
+      node("root", [
+        node("topic-a", [node("branch", [node("leaf")])]),
+        node("topic-b"),
+      ]),
+    ],
+    indexed = flatten(roots);
+  assert.deepEqual(
+    outlineVisibleNodes(indexed, new Set(["topic-a"])).map(
+      (entry) => entry.id,
+    ),
+    ["root", "topic-a", "topic-b"],
+  );
+  assert.deepEqual(
+    outlineVisibleNodes(indexed, new Set(["branch"])).map((entry) => entry.id),
+    ["root", "topic-a", "branch", "topic-b"],
+  );
+});
+
+test("outline disclosure can mirror the graph expansion set", () => {
+  const indexed = flatten([
+      node("root", [node("topic", [node("branch", [node("leaf")])])]),
+    ]),
+    collapsed = outlineCollapsedNodeIds(
+      indexed,
+      new Set(["root", "topic"]),
+    );
+  assert.deepEqual([...collapsed], ["branch"]);
+  assert.deepEqual(
+    outlineVisibleNodes(indexed, collapsed).map((entry) => entry.id),
+    ["root", "topic", "branch"],
   );
 });
 
@@ -245,6 +292,8 @@ test("new projects contain one expanded project root", () => {
   assert.equal(document.project.root_node_id, root.id);
   assert.equal(root.title, "Untitled project");
   assert.deepEqual(document.view.expanded, [root.id]);
+  assert.equal(document.view.layout_mode, "hierarchy");
+  assert.equal(document.view.layout_compact, false);
 });
 
 test("main topics are inserted beneath the project root", () => {

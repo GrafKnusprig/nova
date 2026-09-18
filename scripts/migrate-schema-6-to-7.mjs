@@ -29,13 +29,15 @@ const rootPosition = positionedRoots.length
   : [600, 400];
 
 document.version = 7;
-document.viewer_version = "7.8.0";
+document.viewer_version = "7.12.0";
 document.project = { root_node_id: rootId };
 document.nodes = [root];
 document.view = {
   ...document.view,
   expanded: [...new Set([rootId, ...(document.view?.expanded ?? [])])],
   positions: { ...(document.view?.positions ?? {}), [rootId]: rootPosition },
+  layout_mode: document.view?.layout_mode ?? "hierarchy",
+  layout_compact: document.view?.layout_compact ?? false,
 };
 
 await writeFile(source, `${JSON.stringify(document, null, 2)}\n`, "utf8");

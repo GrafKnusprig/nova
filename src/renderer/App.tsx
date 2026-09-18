@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Actions,
   DockLocation,
@@ -22,10 +29,13 @@ import {
   nodePassesTagFilter,
   nodeLabelMetrics,
   nearestVisibleNode,
+  outlineCollapsedNodeIds,
+  outlineVisibleNodes,
   projectRoot,
   removeNode,
   tagButtonSelected,
   updateNode,
+  wheelZoomFactor,
   zoomViewportAroundPoint,
 } from "./model";
 import { NodeEditor } from "./NodeEditor";
@@ -232,6 +242,68 @@ function nodeRadii(nodes: IndexedNode[]): Map<string, number> {
   );
 }
 
+function expandGraphNode(
+  document: MapDocument,
+  nodeId: string,
+  forcedIds: ReadonlySet<string> = new Set(),
+): MapDocument {
+  if (document.view.expanded.includes(nodeId)) return document;
+  const all = flatten(document.nodes),
+    node = all.find((entry) => entry.id === nodeId);
+  if (!node?.children.length) return document;
+  const before = graphVisibleNodes(document, forcedIds),
+    beforeIds = new Set(before.map((entry) => entry.id)),
+    seedPositions = { ...document.view.positions },
+    radii = nodeRadii(all);
+  before.forEach((entry) => {
+    if (!seedPositions[entry.id])
+      seedPositions[entry.id] = fallbackNodePoint(
+        all.findIndex((candidate) => candidate.id === entry.id),
+      );
+  });
+  if (!seedPositions[nodeId])
+    seedPositions[nodeId] = fallbackNodePoint(
+      all.findIndex((entry) => entry.id === nodeId),
+    );
+  const expanded = new Set(document.view.expanded);
+  expanded.add(nodeId);
+  const opened: MapDocument = {
+      ...document,
+      view: { ...document.view, expanded: [...expanded] },
+    },
+    revealed = graphVisibleNodes(opened, forcedIds).filter(
+      (entry) => !beforeIds.has(entry.id),
+    ),
+    positions = arrangeRevealedNodes(
+      nodeId,
+      revealed,
+      seedPositions,
+      radii,
+      before.map((entry) => ({
+        id: entry.id,
+        point: seedPositions[entry.id],
+        radius: radii.get(entry.id) ?? 40,
+      })),
+    );
+  return { ...opened, view: { ...opened.view, positions } };
+}
+
+function collapseGraphNode(document: MapDocument, nodeId: string): MapDocument {
+  if (
+    nodeId === document.project.root_node_id ||
+    !document.view.expanded.includes(nodeId)
+  )
+    return document;
+  const expanded = new Set(document.view.expanded);
+  expanded.delete(nodeId);
+  for (const descendantId of descendantIds(document.nodes, nodeId))
+    expanded.delete(descendantId);
+  return {
+    ...document,
+    view: { ...document.view, expanded: [...expanded] },
+  };
+}
+
 function tagHue(tag: string): number {
   let hash = 2166136261;
   for (const character of tag) {
@@ -378,6 +450,8 @@ function GraphPanel({
   onView,
   onOpenNode,
   onShowAll,
+  onRelayoutHandled,
+  onFitHandled,
   relayoutToken,
   fitToken,
 }: {
@@ -388,9 +462,13 @@ function GraphPanel({
   onView(view: MapDocument["view"]): void;
   onOpenNode(id: string): void;
   onShowAll(): void;
+  onRelayoutHandled(): void;
+  onFitHandled(): void;
   relayoutToken: number;
   fitToken: number;
 }) {
+  const latestDocument = useRef(document);
+  latestDocument.current = document;
   const all = flatten(document.nodes);
   const allTags = [...new Set(all.flatMap((node) => node.tags))].sort();
   const filterTags = new Set(document.view.tag_filter_tags);
@@ -412,11 +490,16 @@ function GraphPanel({
   const [positions, setPositions] = useState<Record<string, [number, number]>>(
     () => ({ ...document.view.positions }),
   );
+  const zoomRef = useRef(zoom),
+    panRef = useRef(pan),
+    positionsRef = useRef(positions),
+    wheelCommitFrame = useRef<number | undefined>(undefined);
+  zoomRef.current = zoom;
+  panRef.current = pan;
+  positionsRef.current = positions;
   const [layoutRunning, setLayoutRunning] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<"hierarchy" | "relations">(
-    "hierarchy",
-  );
-  const [compactLayout, setCompactLayout] = useState(false);
+  const layoutMode = document.view.layout_mode ?? "hierarchy";
+  const compactLayout = document.view.layout_compact ?? false;
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<
     | {
@@ -498,6 +581,15 @@ function GraphPanel({
   ) => {
     if (layoutRunning || nodes.length === 0) return;
     setLayoutRunning(true);
+    if (
+      document.view.layout_mode !== mode ||
+      document.view.layout_compact !== compact
+    )
+      onView({
+        ...document.view,
+        layout_mode: mode,
+        layout_compact: compact,
+      });
     const worker = new Worker(new URL("./layout.worker.ts", import.meta.url), {
       type: "module",
     });
@@ -535,7 +627,13 @@ function GraphPanel({
     ) => {
       const next = event.data;
       setPositions(next);
-      commit(next);
+      const latestView = latestDocument.current.view;
+      onView({
+        ...latestView,
+        positions: { ...latestView.positions, ...next },
+        layout_mode: mode,
+        layout_compact: compact,
+      });
       setLayoutRunning(false);
       worker.terminate();
     };
@@ -552,19 +650,31 @@ function GraphPanel({
     });
   };
   useEffect(() => {
-    if (relayoutToken > 0) relayout();
+    if (
+      relayoutToken > 0 ||
+      document.view.layout_mode === undefined ||
+      document.view.layout_compact === undefined
+    ) {
+      relayout(layoutMode, compactLayout);
+      if (relayoutToken > 0) onRelayoutHandled();
+    }
   }, [relayoutToken]);
   useEffect(() => {
-    if (fitToken > 0) queueMicrotask(fit);
+    if (fitToken > 0) {
+      queueMicrotask(fit);
+      onFitHandled();
+    }
   }, [fitToken]);
   useEffect(
     () => () => {
       for (const sequence of clickSequences.current.values())
         clearTimeout(sequence.timer);
+      if (wheelCommitFrame.current !== undefined)
+        cancelAnimationFrame(wheelCommitFrame.current);
     },
     [],
   );
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!drag.current) {
       setPositions({ ...document.view.positions });
       setZoom(document.view.zoom);
@@ -581,7 +691,7 @@ function GraphPanel({
       -zoom * (target.point[1] - 400),
     ];
     setPan(nextPan);
-    commit(positions, zoom, nextPan);
+    commit(document.view.positions, zoom, nextPan);
   }, [navigation?.token]);
   const worldPoint = (clientX: number, clientY: number): [number, number] => {
     const [sx, sy] = clientToViewBox(svg.current!, clientX, clientY);
@@ -591,45 +701,11 @@ function GraphPanel({
     const node = all.find((entry) => entry.id === nodeId);
     if (nodeId === document.project.root_node_id || !node?.children.length)
       return;
-    const expanded = new Set(document.view.expanded);
-    if (expanded.has(nodeId)) {
-      expanded.delete(nodeId);
-      for (const descendantId of descendantIds(document.nodes, nodeId))
-        expanded.delete(descendantId);
-      onView({ ...document.view, expanded: [...expanded] });
-      return;
-    }
-
-    const previouslyVisible = new Set(nodes.map((entry) => entry.id));
-    expanded.add(nodeId);
-    const nextDocument: MapDocument = {
-      ...document,
-      view: { ...document.view, expanded: [...expanded] },
-    };
-    const revealed = visibleNodes(nextDocument)
-      .filter(
-        (entry) =>
-          entry.id === document.project.root_node_id ||
-          nodePassesTagFilter(entry, document.view.tag_filter_mode, filterTags),
-      )
-      .filter((entry) => !previouslyVisible.has(entry.id));
-    const nextPositions = arrangeRevealedNodes(
-      nodeId,
-      revealed,
-      { ...positions, [nodeId]: point(node, all.indexOf(node)) },
-      radii,
-      placed.map((entry) => ({
-        id: entry.node.id,
-        point: entry.point,
-        radius: radii.get(entry.node.id) ?? 40,
-      })),
-    );
-    setPositions(nextPositions);
-    onView({
-      ...document.view,
-      expanded: [...expanded],
-      positions: nextPositions,
-    });
+    const next = document.view.expanded.includes(nodeId)
+      ? collapseGraphNode(document, nodeId)
+      : expandGraphNode(document, nodeId);
+    setPositions({ ...next.view.positions });
+    onView(next.view);
   };
   const cancelClickSequences = (exceptId?: string) => {
     for (const [id, sequence] of clickSequences.current)
@@ -672,17 +748,38 @@ function GraphPanel({
       onContextMenu={(event) => event.preventDefault()}
       onWheel={(event) => {
         event.preventDefault();
+        const previousZoom = zoomRef.current,
+          previousPan = panRef.current;
         const next = Math.max(
           0.2,
-          Math.min(2.5, zoom * (event.deltaY < 0 ? 1.12 : 0.89)),
+          Math.min(
+            2.5,
+            previousZoom *
+              wheelZoomFactor(event.deltaY, event.deltaMode, event.ctrlKey),
+          ),
         );
         const anchor = svg.current
           ? clientToViewBox(svg.current, event.clientX, event.clientY)
           : ([600, 400] as [number, number]);
-        const nextPan = zoomViewportAroundPoint(pan, zoom, next, anchor);
+        const nextPan = zoomViewportAroundPoint(
+          previousPan,
+          previousZoom,
+          next,
+          anchor,
+        );
+        zoomRef.current = next;
+        panRef.current = nextPan;
         setZoom(next);
         setPan(nextPan);
-        commit(positions, next, nextPan);
+        if (wheelCommitFrame.current === undefined)
+          wheelCommitFrame.current = requestAnimationFrame(() => {
+            wheelCommitFrame.current = undefined;
+            commit(
+              positionsRef.current,
+              zoomRef.current,
+              panRef.current,
+            );
+          });
       }}
       onPointerDown={(event) => {
         if ((event.target as Element).closest("button, details")) return;
@@ -1068,7 +1165,6 @@ function GraphPanel({
           disabled={layoutRunning}
           onChange={(event) => {
             const mode = event.target.value as "hierarchy" | "relations";
-            setLayoutMode(mode);
             relayout(mode, compactLayout);
           }}
         >
@@ -1084,7 +1180,6 @@ function GraphPanel({
           title="Remove or restore extra spacing between unrelated groups"
           onClick={() => {
             const next = !compactLayout;
-            setCompactLayout(next);
             relayout(layoutMode, next);
           }}
         >
@@ -1153,32 +1248,49 @@ function Inspector({
 
 function useNodeListNavigation(
   onFocus: (id: string) => void,
-  onOpen: (id: string) => void,
+  onDoubleClick: (id: string) => void,
+  onTripleClick: (id: string) => void,
 ) {
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const sequences = useRef(
+    new Map<
+      string,
+      { count: 1 | 2; timer: ReturnType<typeof setTimeout> }
+    >(),
+  );
   useEffect(
     () => () => {
-      for (const timer of timers.current.values()) clearTimeout(timer);
+      for (const sequence of sequences.current.values())
+        clearTimeout(sequence.timer);
     },
     [],
   );
   return {
     click(id: string) {
-      const pending = timers.current.get(id);
-      if (pending) clearTimeout(pending);
-      timers.current.set(
-        id,
-        setTimeout(() => {
-          timers.current.delete(id);
+      for (const [otherId, sequence] of sequences.current)
+        if (otherId !== id) {
+          clearTimeout(sequence.timer);
+          sequences.current.delete(otherId);
+        }
+      const sequence = sequences.current.get(id);
+      if (!sequence) {
+        const timer = setTimeout(() => {
+          sequences.current.delete(id);
           onFocus(id);
-        }, 240),
-      );
-    },
-    doubleClick(id: string) {
-      const pending = timers.current.get(id);
-      if (pending) clearTimeout(pending);
-      timers.current.delete(id);
-      onOpen(id);
+        }, 500);
+        sequences.current.set(id, { count: 1, timer });
+        return;
+      }
+      clearTimeout(sequence.timer);
+      if (sequence.count === 1) {
+        const timer = setTimeout(() => {
+          sequences.current.delete(id);
+          onDoubleClick(id);
+        }, 320);
+        sequences.current.set(id, { count: 2, timer });
+        return;
+      }
+      sequences.current.delete(id);
+      onTripleClick(id);
     },
   };
 }
@@ -1187,28 +1299,74 @@ function Outline({
   nodes,
   selectedId,
   secondaryIds,
+  synchronized,
+  expandedIds,
   onFocus,
-  onOpen,
+  onSynchronizedDoubleClick,
+  onOpenProperties,
 }: {
   nodes: IndexedNode[];
   selectedId?: string;
   secondaryIds: ReadonlySet<string>;
+  synchronized: boolean;
+  expandedIds: ReadonlySet<string>;
   onFocus(id: string): void;
-  onOpen(id: string): void;
+  onSynchronizedDoubleClick(id: string): void;
+  onOpenProperties(id: string): void;
 }) {
   const refs = useRef(new Map<string, HTMLButtonElement>());
-  const navigation = useNodeListNavigation(onFocus, onOpen);
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const synchronizedCollapsed = useMemo(
+    () => outlineCollapsedNodeIds(nodes, expandedIds),
+    [expandedIds, nodes],
+  );
+  const activeCollapsed = synchronized ? synchronizedCollapsed : collapsed;
+  const navigation = useNodeListNavigation(
+    onFocus,
+    (id) => {
+      const node = nodes.find((entry) => entry.id === id);
+      if (synchronized) {
+        onSynchronizedDoubleClick(id);
+        return;
+      }
+      if (!node?.children.length) return;
+      setCollapsed((current) => {
+        const next = new Set(current);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    },
+    onOpenProperties,
+  );
+  const visibleNodes = outlineVisibleNodes(nodes, activeCollapsed);
   useEffect(() => {
-    if (selectedId)
+    if (!selectedId) return;
+    const parents = new Map(nodes.map((node) => [node.id, node.parentId]));
+    setCollapsed((current) => {
+      const next = new Set(current);
+      let parentId = parents.get(selectedId),
+        changed = false;
+      while (parentId) {
+        changed = next.delete(parentId) || changed;
+        parentId = parents.get(parentId);
+      }
+      return changed ? next : current;
+    });
+  }, [nodes, selectedId]);
+  useEffect(() => {
+    if (!selectedId) return;
+    const frame = requestAnimationFrame(() =>
       refs.current
         .get(selectedId)
-        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [selectedId]);
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [activeCollapsed, selectedId]);
   return (
     <section className="panel-content">
       <p className="eyebrow">OUTLINE</p>
       <div className="outline">
-        {nodes.map((node) => (
+        {visibleNodes.map((node) => (
           <button
             ref={(element) => {
               if (element) refs.current.set(node.id, element);
@@ -1218,9 +1376,11 @@ function Outline({
             className={`${selectedId === node.id ? "active" : ""} ${secondaryIds.has(node.id) ? "secondary" : ""}`}
             style={{ paddingLeft: `${10 + node.depth * 14}px` }}
             onClick={() => navigation.click(node.id)}
-            onDoubleClick={() => navigation.doubleClick(node.id)}
           >
-            {node.children.length ? "◆" : "·"} {node.title}
+            <span className="outline-disclosure">
+              {node.children.length ? (activeCollapsed.has(node.id) ? "▸" : "▾") : "·"}
+            </span>{" "}
+            <span>{node.title}</span>
           </button>
         ))}
       </div>
@@ -1230,17 +1390,21 @@ function Outline({
 
 function Search({
   nodes,
+  selectedId,
   secondaryIds,
   onFocus,
   onOpen,
+  onOpenProperties,
 }: {
   nodes: IndexedNode[];
+  selectedId?: string;
   secondaryIds: ReadonlySet<string>;
   onFocus(id: string): void;
   onOpen(id: string): void;
+  onOpenProperties(id: string): void;
 }) {
   const [query, setQuery] = useState("");
-  const navigation = useNodeListNavigation(onFocus, onOpen);
+  const navigation = useNodeListNavigation(onFocus, onOpen, onOpenProperties);
   const results = query
     ? nodes
         .filter((node) =>
@@ -1263,9 +1427,8 @@ function Search({
         {results.map((node) => (
           <button
             key={node.id}
-            className={secondaryIds.has(node.id) ? "secondary" : ""}
+            className={`${selectedId === node.id ? "active" : ""} ${secondaryIds.has(node.id) ? "secondary" : ""}`}
             onClick={() => navigation.click(node.id)}
-            onDoubleClick={() => navigation.doubleClick(node.id)}
           >
             <strong>{node.title}</strong>
             <span>{node.tags.join(" · ")}</span>
@@ -1287,6 +1450,8 @@ function Empty({ title, text }: { title: string; text: string }) {
 
 function Panel({
   id,
+  panelVisible,
+  outlineSynchronized,
   document,
   selectedId,
   navigation,
@@ -1296,15 +1461,24 @@ function Panel({
   activity,
   relayoutToken,
   fitToken,
+  onRelayoutHandled,
+  onFitHandled,
   openNodeProperty,
   onShowAll,
 }: {
   id: PanelId;
+  panelVisible: boolean;
+  outlineSynchronized: boolean;
   document: MapDocument;
   selectedId?: string;
   navigation?: GraphNavigation;
   setSelected(id?: string): void;
-  navigateNode(id: string, expandPath: boolean): void;
+  navigateNode(
+    id: string,
+    expandPath: boolean,
+    toggleTarget?: boolean,
+    allowHiddenGraph?: boolean,
+  ): void;
   applyDocument(
     value: MapDocument,
     message?: string,
@@ -1313,6 +1487,8 @@ function Panel({
   activity: string[];
   relayoutToken: number;
   fitToken: number;
+  onRelayoutHandled(): void;
+  onFitHandled(): void;
   openNodeProperty(id: string): void;
   onShowAll(): void;
 }) {
@@ -1330,14 +1506,16 @@ function Panel({
     return (
       <GraphPanel
         document={document}
-        selectedId={selectedId}
-        navigation={navigation}
+        selectedId={panelVisible ? selectedId : undefined}
+        navigation={panelVisible ? navigation : undefined}
         onSelect={setSelected}
         onView={(view) =>
           applyDocument({ ...document, view }, undefined, false)
         }
         onOpenNode={openNodeProperty}
         onShowAll={onShowAll}
+        onRelayoutHandled={onRelayoutHandled}
+        onFitHandled={onFitHandled}
         relayoutToken={relayoutToken}
         fitToken={fitToken}
       />
@@ -1345,7 +1523,7 @@ function Panel({
   if (id === "inspector")
     return (
       <Inspector
-        node={selected}
+        node={panelVisible ? selected : undefined}
         allNodes={all}
         onApply={(values) => selected && applyNode(selected.id, values)}
         onSelectNode={setSelected}
@@ -1357,17 +1535,24 @@ function Panel({
         nodes={all}
         selectedId={selectedId}
         secondaryIds={new Set(navigation?.secondaryIds ?? [])}
+        synchronized={outlineSynchronized}
+        expandedIds={new Set(document.view.expanded)}
         onFocus={(nodeId) => navigateNode(nodeId, false)}
-        onOpen={(nodeId) => navigateNode(nodeId, true)}
+        onSynchronizedDoubleClick={(nodeId) =>
+          navigateNode(nodeId, true, true, true)
+        }
+        onOpenProperties={openNodeProperty}
       />
     );
   if (id === "search")
     return (
       <Search
         nodes={all}
+        selectedId={selectedId}
         secondaryIds={new Set(navigation?.secondaryIds ?? [])}
         onFocus={(nodeId) => navigateNode(nodeId, false)}
         onOpen={(nodeId) => navigateNode(nodeId, true)}
+        onOpenProperties={openNodeProperty}
       />
     );
   if (id === "assistant") return <AssistantPanel />;
@@ -1516,6 +1701,17 @@ export function App() {
       );
     });
   }, [load, record]);
+  const panelIsVisible = useCallback(
+    (panel: PanelId) => {
+      const node = dockModel.getNodeById(`panel-${panel}`);
+      return node?.getType() === "tab" && (node as TabNode).isVisible();
+    },
+    [dockModel],
+  );
+  const panelIsOpen = useCallback(
+    (panel: PanelId) => Boolean(dockModel.getNodeById(`panel-${panel}`)),
+    [dockModel],
+  );
   const openPanel = useCallback(
     (panel: PanelId) => {
       const tabId = `panel-${panel}`;
@@ -1717,19 +1913,11 @@ export function App() {
           (command === "expand-selected" || command === "collapse-selected") &&
           selectedId
         ) {
-          const expanded = new Set(current.view.expanded);
-          if (selectedId === current.project.root_node_id)
-            expanded.add(selectedId);
-          else if (command === "expand-selected") expanded.add(selectedId);
-          else {
-            expanded.delete(selectedId);
-            for (const descendantId of descendantIds(current.nodes, selectedId))
-              expanded.delete(descendantId);
-          }
-          applyDocument({
-            ...current,
-            view: { ...current.view, expanded: [...expanded] },
-          });
+          applyDocument(
+            command === "expand-selected"
+              ? expandGraphNode(current, selectedId)
+              : collapseGraphNode(current, selectedId),
+          );
         }
       }),
     [
@@ -1751,17 +1939,27 @@ export function App() {
       navigationRun.current += 1;
       setGraphNavigation(undefined);
       setSelectedId(id);
-      if (id) openPanel("inspector");
     },
-    [openPanel],
+    [],
   );
   const navigateNode = useCallback(
-    async (id: string, expandPath: boolean) => {
+    async (
+      id: string,
+      expandPath: boolean,
+      toggleTarget = false,
+      allowHiddenGraph = false,
+    ) => {
       const run = ++navigationRun.current,
         initial = documentRef.current,
         all = flatten(initial.nodes),
-        target = all.find((node) => node.id === id);
+        target = all.find((node) => node.id === id),
+        graphVisible = panelIsVisible("graph");
       if (!target) return;
+      setSelectedId(id);
+      if (!graphVisible && !allowHiddenGraph) {
+        setGraphNavigation(undefined);
+        return;
+      }
       const parents = new Map(all.map((node) => [node.id, node.parentId])),
         path = ancestorPath(id, parents),
         secondaryIds = path.slice(0, -1),
@@ -1771,75 +1969,71 @@ export function App() {
         initialFocus =
           nearestVisibleNode(id, parents, initiallyVisibleIds) ??
           initial.project.root_node_id;
-      setSelectedId(id);
-      openPanel("inspector");
-      openPanel("graph");
-      navigationToken.current += 1;
-      setGraphNavigation({
-        focusId: initialFocus,
-        primary: !expandPath && initialFocus === id,
-        revealIds: expandPath ? path : [],
-        secondaryIds,
-        token: navigationToken.current,
-      });
+      if (graphVisible && !expandPath) {
+        navigationToken.current += 1;
+        setGraphNavigation({
+          focusId: initialFocus,
+          primary: initialFocus === id,
+          revealIds: [],
+          secondaryIds,
+          token: navigationToken.current,
+        });
+      } else if (!graphVisible || expandPath) setGraphNavigation(undefined);
       if (!expandPath) return;
 
+      if (
+        toggleTarget &&
+        target.children.length &&
+        id !== initial.project.root_node_id &&
+        initial.view.expanded.includes(id)
+      ) {
+        applyDocument(collapseGraphNode(initial, id));
+        if (graphVisible) {
+          navigationToken.current += 1;
+          setGraphNavigation({
+            focusId: id,
+            primary: true,
+            revealIds: path,
+            secondaryIds,
+            token: navigationToken.current,
+          });
+        }
+        return;
+      }
+
       const forcedIds = new Set(path),
-        radii = nodeRadii(all);
+        parentsToOpen = [
+          ...secondaryIds,
+          ...(toggleTarget && target.children.length ? [id] : []),
+        ];
       let working = initial;
-      for (const parentId of secondaryIds) {
+      for (const parentId of parentsToOpen) {
         if (working.view.expanded.includes(parentId)) continue;
-        const before = graphVisibleNodes(working, forcedIds),
-          beforeIds = new Set(before.map((node) => node.id)),
-          seedPositions = { ...working.view.positions };
-        before.forEach((node) => {
-          if (!seedPositions[node.id])
-            seedPositions[node.id] = fallbackNodePoint(
-              all.findIndex((entry) => entry.id === node.id),
-            );
-        });
-        const expanded = new Set(working.view.expanded);
-        expanded.add(parentId);
-        const opened: MapDocument = {
-            ...working,
-            view: { ...working.view, expanded: [...expanded] },
-          },
-          revealed = graphVisibleNodes(opened, forcedIds).filter(
-            (node) => !beforeIds.has(node.id),
-          ),
-          positions = arrangeRevealedNodes(
-            parentId,
-            revealed,
-            seedPositions,
-            radii,
-            before.map((node) => ({
-              id: node.id,
-              point: seedPositions[node.id],
-              radius: radii.get(node.id) ?? 40,
-            })),
-          );
-        working = {
-          ...opened,
-          view: { ...opened.view, positions },
-        };
+        working = expandGraphNode(working, parentId, forcedIds);
         applyDocument(working);
         await new Promise((resolve) => setTimeout(resolve, 90));
         if (navigationRun.current !== run) return;
       }
-      navigationToken.current += 1;
-      setGraphNavigation({
-        focusId: id,
-        primary: true,
-        revealIds: path,
-        secondaryIds,
-        token: navigationToken.current,
-      });
+      if (graphVisible) {
+        navigationToken.current += 1;
+        setGraphNavigation({
+          focusId: id,
+          primary: true,
+          revealIds: path,
+          secondaryIds,
+          token: navigationToken.current,
+        });
+      }
     },
-    [applyDocument, openPanel],
+    [applyDocument, panelIsVisible],
   );
   const panel = (id: PanelId) => (
     <Panel
       id={id}
+      panelVisible={panelIsVisible(id)}
+      outlineSynchronized={
+        panelIsOpen("outline") && panelIsOpen("graph")
+      }
       document={document}
       selectedId={selectedId}
       navigation={graphNavigation}
@@ -1849,6 +2043,8 @@ export function App() {
       activity={activity}
       relayoutToken={relayoutToken}
       fitToken={fitToken}
+      onRelayoutHandled={() => setRelayoutToken(0)}
+      onFitHandled={() => setFitToken(0)}
       openNodeProperty={openNodeProperty}
       onShowAll={showAllNodes}
     />

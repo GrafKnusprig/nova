@@ -491,9 +491,18 @@ button {
 }
 .outline button:hover,
 .outline button.active,
-.search-results button:hover {
+.search-results button:hover,
+.search-results button.active {
   color: #e9fbfd;
   background: #1a2a3e;
+}
+.outline button {
+  grid-template-columns: 0.85rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+}
+.outline-disclosure {
+  color: #6ddce6;
 }
 .outline button.secondary,
 .search-results button.secondary {
