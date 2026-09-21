@@ -107,7 +107,7 @@
                   "summary": "NOVA separates compilation from installer packaging: npm run build performs TypeScript checks, creates the Vite renderer output, copies AGENTS.md into dist, and compiles Electron main/preload code; npm run package runs that build and then Electron Builder for Windows. A clean packaging test produced the x64 NSIS installer dist/NOVA-8.0.1-x64.exe plus its blockmap and unpacked application. The shared domain layer also supplies the deterministic schema-7 CLI and optimistic revision checks.",
                   "rationale": "The map must remain an open JSON knowledge record that both the viewer and external LLM agents can maintain, while end users should need neither Node.js nor Python and concurrent writers should not silently lose changes.",
                   "created_at": "2026-09-17T07:56:12.945Z",
-                  "modified_at": "2026-09-21T12:42:04.771Z",
+                  "modified_at": "2026-09-21T14:04:33.939Z",
                   "children": [
                     {
                       "id": "project-cli-implementation",
@@ -150,8 +150,26 @@
                       "summary": "NOVA has a standalone Git repository at C:\\Users\\unger\\Documents\\git\\nova. The extracted application history retains its relevant commits, with all reachable author and committer identities set to Philipp Unger <lipp-phinger@gmx.de>. The repository-local identity uses the same name and email, and origin points to https://github.com/GrafKnusprig/nova.git; master was published there and tracks origin/master. Its root AGENTS.md is packaged unchanged into dist/AGENTS.md. A standalone production build passed TypeScript checks, the Vite renderer build, the guidance-file copy, and Electron main/preload compilation.",
                       "rationale": "A dedicated repository lets the versatile NOVA application evolve independently while retaining its application-development history.",
                       "created_at": "2026-09-17T10:47:51.122Z",
-                      "modified_at": "2026-09-21T13:20:20.920Z",
-                      "children": [],
+                      "modified_at": "2026-09-21T13:50:43.787Z",
+                      "children": [
+                        {
+                          "id": "1fddf6fd-0c6d-4e1a-8248-639b05ffdf34",
+                          "title": "Promotional GitHub README",
+                          "tags": [
+                            "documentation",
+                            "tool-development",
+                            "implementation",
+                            "user"
+                          ],
+                          "main_tag": "documentation",
+                          "summary": "The repository root README presents NOVA as an AI-assisted work, project, and research protocol and as an anti-notebook for preserving decisions, rationale, evidence, experiments, limitations, and evolving structure. It explains standalone use through the built-in OpenAI or FhGenie assistant and IDE-companion use through AGENTS.md and the validated CLI. The document uses the NOVA splash and icon plus five exact product screenshots stored under images/screenshots to demonstrate the full workspace, graph neighborhoods, structured Inspector, permission-scoped Assistant, and tagged Search. Its Get NOVA section separates a pre-built Windows x64 installer obtained from GitHub Releases from self-built development, build, and packaging commands. It also documents graph semantics, persistence guarantees, arbitrary project filenames, and representative CLI usage.",
+                          "rationale": "The user wants the public GitHub repository to promote what NOVA is for and make its visual and AI-assisted capabilities immediately understandable without reducing the project to a conventional feature list.",
+                          "created_at": "2026-09-21T13:50:43.785Z",
+                          "modified_at": "2026-09-21T14:04:31.686Z",
+                          "children": [],
+                          "links": []
+                        }
+                      ],
                       "links": []
                     },
                     {
@@ -167,6 +185,23 @@
                       "rationale": "AGENTS.md is essential operational guidance and must ship with NOVA.",
                       "created_at": "2026-09-21T11:47:42.620Z",
                       "modified_at": "2026-09-21T11:47:42.620Z",
+                      "children": [],
+                      "links": []
+                    },
+                    {
+                      "id": "e869ce32-03ae-4d79-9b3f-8da1317ca8bc",
+                      "title": "GitHub Releases Windows distribution",
+                      "tags": [
+                        "tool-development",
+                        "implementation",
+                        "todo",
+                        "user"
+                      ],
+                      "main_tag": "implementation",
+                      "summary": "NOVA 8.0.1 has been freshly packaged as the Windows x64 NSIS installer dist/NOVA-8.0.1-x64.exe (216,046,678 bytes; SHA-256 4113ED3C6C9787E05D4B2A20092401FE596D02C72BBD54BD924FC8704DDC5361) with a corresponding blockmap and unpacked application. The README points users to GitHub's latest-release URL for the pre-built installer. Publishing tag v8.0.1 and attaching the installer as a GitHub Release remain pending until authenticated GitHub release-management access is connected.",
+                      "rationale": "The user wants non-developers to obtain a complete pre-built Windows installer directly from the repository's GitHub Releases page while retaining self-build instructions for developers.",
+                      "created_at": "2026-09-21T14:04:33.937Z",
+                      "modified_at": "2026-09-21T14:04:33.937Z",
                       "children": [],
                       "links": []
                     }
@@ -1353,263 +1388,357 @@
         400
       ],
       "electron-knowledge-map-rebuild-plan": [
-        292.0635039810729,
-        -89.89163307102382
+        291.38043007680193,
+        -82.97710698074012
       ],
       "knowledge-map-navigation": [
-        839.0380127651482,
-        122.95956115417184
+        893.1435786714692,
+        225.5081602689435
       ],
       "knowledge-map-editing": [
-        937.8805459534153,
-        385.52428808251074
+        816.2637950134272,
+        387.2161126380287
       ],
       "knowledge-map-save-safety": [
-        433.81938761469627,
-        242.23996482014277
+        383.50537200691076,
+        325.1034729077129
       ],
       "knowledge-map-viewer-smoke-test": [
-        801.4699559602307,
-        458.5030199607597
+        762.8571630007737,
+        532.3681743561656
       ],
       "knowledge-map-rationale-editor": [
-        456.0101063587952,
-        557.1642121228008
+        327.3768907211041,
+        485.98142441213594
       ],
       "knowledge-map-work-categories": [
-        668.1045418571055,
-        189.75860932079388
+        710.4068561280507,
+        208.6008764623358
       ],
       "knowledge-map-edge-label-layout": [
-        915.2407135675182,
-        561.3377820957309
+        812.8120650771009,
+        677.4136932824421
       ],
       "item-reference-granularity": [
-        380.2732053131727,
-        411.15359356689777
+        509.0413176746138,
+        199.98154850194575
       ],
       "knowledge-map-layout-and-dragging": [
-        487.066229203778,
-        1406.1424357744058
+        480.0543357720156,
+        1421.9052350285235
       ],
       "knowledge-map-weighted-view": [
-        577.8215176113018,
-        681.1223989965087
+        466.27975537267594,
+        590.5033634767022
       ],
       "local-knowledge-map-assistant": [
-        972.774815008448,
-        1066.973026820508
+        975.1379428066258,
+        1067.9251029187565
       ],
       "embedding-note-intake-workflow": [
-        796.3912144593096,
-        300.4753671234255
+        920.5023151403402,
+        515.6588100785136
       ],
       "knowledge-map-startup-and-navigation": [
-        293.428695456787,
-        556.6566590682207
+        347.0872056404432,
+        150.19944104831777
       ],
       "knowledge-map-project-creation": [
-        692.4800859903125,
-        -724.6295579282851
+        690.2278744429974,
+        -728.4305352881815
       ],
       "canonical-mindmap-template": [
-        753.9573429923199,
-        616.4021530588407
+        644.9987042525383,
+        647.7054338689003
       ],
       "knowledge-map-item-explosion": [
-        525.7912826990714,
-        75.04470533529766
+        615.1329991449477,
+        52.53879086018001
       ],
       "mindmap-version-contract": [
-        743.4002738340688,
-        -371.0991220860883
+        754.7948163535609,
+        -366.85509225780214
       ],
       "electron-project-directory": [
-        -121.93588761105956,
-        13.024100567698214
+        -120.10225754855786,
+        27.482293188293664
       ],
       "electron-run-as-node-startup-fix": [
-        -324.75125167385033,
-        -60.22675072101202
+        -326.0001688330501,
+        -47.58486966623674
       ],
       "electron-dev-server-url-fix": [
-        -320.5473107275012,
-        104.17372029447189
+        -317.54333769241225,
+        116.65175839448663
       ],
       "electron-portable-distribution-and-cli-plan": [
-        1135.2730888844067,
-        -185.40614065253158
+        1131.8294981750278,
+        -169.96303683067143
       ],
       "project-cli-implementation": [
-        1326.9466900084237,
-        -76.89066456247535
+        1318.7249820407048,
+        -58.8066249385502
       ],
       "5fc645a2-1e09-4b62-b984-5eff5c95fd6a": [
-        1277.492196507013,
-        -356.7716516285439
+        1281.7261773936455,
+        -342.75513591485645
       ],
       "f067182a-2297-46cc-8ebc-f1904363eb05": [
-        1395.4758684710039,
-        -239.60193424312482
+        1395.966270164173,
+        -217.56741185112259
       ],
       "electron-dockable-workspace": [
-        82.86168099212902,
-        -68.58014757707885
+        83.18964864456302,
+        -66.47951483765989
       ],
       "electron-core-viewer-implementation": [
-        1078.668139711572,
-        -739.606065055306
+        1077.6273814612362,
+        -736.9803041680665
       ],
       "08399b46-166a-4afc-8436-529f56b351f1": [
-        1230.090277179629,
-        -911.6026265728137
+        1229.0790692928254,
+        -909.9464974020274
       ],
       "semantic-zoom-graph-rendering": [
-        154.2579457752327,
-        966.9928708370198
+        161.30735042350415,
+        972.5651445025576
       ],
       "information-weighted-node-bubbles": [
-        76.53022997935884,
-        771.529599652187
+        32.565065214636746,
+        806.2135175400218
       ],
       "graph-multiselect-and-group-drag": [
-        266.5237297679899,
-        1171.3681706301006
+        380.5018443970985,
+        962.3832535304701
       ],
       "automatic-category-color-palette": [
-        -40.88221714237351,
-        897.994498665308
+        -50.428533498275414,
+        957.5108051606715
       ],
       "node-hover-content-tooltip": [
-        82.64984380614378,
-        1195.9908990996964
+        146.93755407037716,
+        1213.9964551813266
       ],
       "tag-centric-electron-node-editing": [
-        -52.58836130809161,
-        1075.1085984583851
+        -14.510408502222164,
+        1131.3355931203848
       ],
       "electron-guid-node-identity": [
-        315.9262247413768,
-        830.5414032246157
+        285.1701158069557,
+        801.0606059356569
       ],
       "hierarchy-weighted-electron-relayout": [
-        374.1677030595944,
-        1008.5667460574933
+        320.24209808517287,
+        1148.0172791529192
       ],
       "electron-local-application-boundary": [
-        278.38180745554337,
-        -304.0100336833505
+        283.4952603383284,
+        -297.5312203384077
       ],
       "tkinter-viewer-retirement-plan": [
-        104.33505126326176,
-        -238.47417661390648
+        107.96646472270062,
+        -236.0750260768547
       ],
       "large-map-performance-optimization": [
-        448.41883934077214,
-        1626.8107882668876
+        432.62667052055144,
+        1643.0741408294912
       ],
       "large-map-performance-benchmark": [
-        409.6173311489722,
-        1803.4821525022357
+        414.61760932434487,
+        1823.0574780960103
       ],
       "assistant-provider-and-credential-boundary": [
-        -32.459907454498186,
-        1472.5849233642716
+        -33.06337305363078,
+        1465.1815982562662
       ],
       "fhgenie-api-web-model-catalog-gap": [
-        -243.92863044995786,
-        1544.2300816397885
+        -245.42412458171546,
+        1525.222464766926
       ],
       "fhgenie-web-search-api-gap": [
-        -285.7406603687717,
-        2020.8070394911892
+        -288.93158285347164,
+        2013.0681979719022
       ],
       "assistant-owned-web-search-layer": [
-        -460.64801406836943,
-        2082.384490471304
+        -463.46534647682796,
+        2075.5926758322594
       ],
       "assistant-project-scoped-tools": [
-        1647.3531439180754,
-        481.91609089157254
+        1651.0041986424574,
+        468.268633573041
       ],
       "5a3e1328-dcf2-4fec-9122-8b0985761b5a": [
-        1844.5612611273605,
-        399.80605555232097
+        1846.9242411385007,
+        381.1040997899475
       ],
       "assistant-capability-modes": [
-        1186.6306104352036,
-        1015.087205534071
+        1182.156529134315,
+        998.2883362770444
       ],
       "assistant-chat-input-availability": [
-        995.2507987755215,
-        1268.3497017597188
+        1016.0409219653561,
+        1266.7329377230524
       ],
       "assistant-new-chat-context-reset": [
-        1159.4568807330086,
-        1200.626284107982
+        1174.0687103677344,
+        1185.632279632299
       ],
       "assistant-fhgenie-provider-support": [
-        887.2057839771021,
-        1777.8466939204634
+        886.9648914131645,
+        1771.7733215167686
       ],
       "fhgenie-default-mindmap-model": [
-        906.9960917505199,
-        1972.239874003679
+        913.9493699137995,
+        1965.2990372902434
       ],
       "project-root-node-schema-design": [
-        712.3197785301146,
-        -957.6644571602735
+        710.7418235788354,
+        -961.8954534286939
       ],
       "mindmap-versioning-rules": [
-        654.86622449116,
-        -557.4076678947387
+        654.4121350774815,
+        -551.1292061490624
       ],
       "mindmap-newer-schema-rejection": [
-        551.4357127955986,
-        -428.19258063478003
+        558.5178721709776,
+        -416.228057721023
       ],
       "electron-live-project-schema-v5": [
-        955.2244661208222,
-        -451.8607923652723
+        960.7303860268041,
+        -463.85852157826946
       ],
       "electron-tag-filter-schema-v6": [
-        925.1387745529522,
-        -260.5118552292152
+        946.9109749322283,
+        -270.65300571021294
       ],
       "recursive-node-schema-v3": [
-        1190.9099672200896,
-        127.54715575453375
+        1194.566494375112,
+        140.51243376403428
       ],
       "item-to-child-node-migration": [
-        1386.2281661031063,
-        219.9185557003289
+        1392.9226264166286,
+        227.67922588834676
       ],
       "recursive-node-viewer-ui": [
-        401.19184983012013,
-        -640.1322940140205
+        403.25050340176864,
+        -640.877963979541
       ],
       "collapsed-relation-bubbling": [
-        334.1108726719742,
-        -848.6958912825723
+        334.106575700517,
+        -849.534080206548
       ],
       "global-hierarchy-visibility-controls": [
-        202.08516197461316,
-        -741.4639062821032
+        202.7871216399413,
+        -741.4383454262128
       ],
       "persistent-hierarchy-view-state": [
-        1262.6836239751303,
-        334.84232300192286
+        1272.5996657381472,
+        345.97170798427857
       ],
       "llm-context-schema-v4": [
-        824.5376680215342,
-        -586.9322227322752
+        822.0295287134891,
+        -590.6855290038601
       ]
     },
-    "zoom": 0.9906064848790231,
+    "zoom": 0.29836493952825416,
     "viewport": [
-      -123.60866767143239,
-      13.522677458187303
+      77.26204734629675,
+      -73.89432448173574
     ],
-    "layout_mode": "hierarchy"
+    "layout_mode": "hierarchy",
+    "workspace": {
+      "global": {
+        "splitterSize": 5,
+        "tabEnablePopout": true,
+        "tabEnableRename": false
+      },
+      "borders": [],
+      "layout": {
+        "type": "row",
+        "id": "#aa4f1072-656c-4831-8466-675d8a086e6d",
+        "children": [
+          {
+            "type": "tabset",
+            "id": "graph-tabset",
+            "weight": 41.38134592680047,
+            "children": [
+              {
+                "type": "tab",
+                "id": "panel-graph",
+                "name": "Graph",
+                "component": "graph",
+                "enablePopout": true
+              }
+            ]
+          },
+          {
+            "type": "tabset",
+            "id": "#dd94733a-8744-46db-a7d0-76cb177c34c1",
+            "weight": 28.618469598583236,
+            "children": [
+              {
+                "type": "tab",
+                "id": "panel-assistant",
+                "name": "AI Assistant",
+                "component": "assistant",
+                "enablePopout": true
+              }
+            ]
+          },
+          {
+            "type": "row",
+            "id": "#e0359eb4-aa63-43a4-85b6-fc622c581fdc",
+            "weight": 30.000184474616294,
+            "children": [
+              {
+                "type": "tabset",
+                "id": "inspector-tabset",
+                "weight": 62,
+                "children": [
+                  {
+                    "type": "tab",
+                    "id": "panel-inspector",
+                    "name": "Inspector",
+                    "component": "inspector",
+                    "enablePopout": true
+                  }
+                ]
+              },
+              {
+                "type": "tabset",
+                "id": "utility-tabset",
+                "weight": 38,
+                "selected": 1,
+                "children": [
+                  {
+                    "type": "tab",
+                    "id": "panel-outline",
+                    "name": "Outline",
+                    "component": "outline",
+                    "enablePopout": true
+                  },
+                  {
+                    "type": "tab",
+                    "id": "panel-search",
+                    "name": "Search",
+                    "component": "search",
+                    "enablePopout": true
+                  },
+                  {
+                    "type": "tab",
+                    "id": "panel-activity",
+                    "name": "Activity",
+                    "component": "activity",
+                    "enablePopout": true
+                  }
+                ],
+                "active": true
+              }
+            ]
+          }
+        ]
+      },
+      "popouts": {}
+    }
   }
 }
