@@ -38,10 +38,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "Replacement of the Tkinter knowledge-map viewer with a self-contained dark Electron application using TypeScript and React. Electron main owns native file dialogs, schema validation, atomic persistence, external-file watching, and remembered-project startup; the renderer owns shared workspace state, graph rendering, editing, and conflict-aware drafts. Schema 7 treats mindmap.json as the complete live project file, including its protected project root, dock/popout layout, and inclusive or exclusive graph filters.",
+          "summary": "Replacement of the Tkinter knowledge-map viewer with a self-contained dark Electron application using TypeScript and React. Electron main owns native file dialogs, schema validation, atomic persistence, external-file watching, and remembered-project startup; the renderer owns shared workspace state, graph rendering, editing, and conflict-aware drafts. Schema 7 treats the selected JSON project file as the complete live project, including its protected project root, dock/popout layout, and inclusive or exclusive graph filters.",
           "rationale": "The user wants a modern IDE-like workspace in which functional panels can be docked, moved, detached, closed, and reopened. The scope is only the mind-map visualizer, so retaining a Python runtime or introducing a separate backend adds complexity without a corresponding capability benefit. The graph should remain legible and performant at scale through progressive detail as the user zooms in.",
           "created_at": "2026-09-15T00:00:00.000Z",
-          "modified_at": "2026-09-17T07:56:12.945Z",
+          "modified_at": "2026-09-21T13:02:45.190Z",
           "children": [
             {
               "id": "electron-project-directory",
@@ -200,10 +200,10 @@
                 "user"
               ],
               "main_tag": "tool-development",
-              "summary": "NOVA uses FlexLayout in a dark VS Code-style shell. Graph, Inspector, Outline, Search, Activity, and Node Property views share one dockable and pop-out workspace. Standard panels reopen from View > Panels; Node Property opens in the Inspector area and can be moved or popped out. The serialized arrangement is project state in mindmap.json rather than browser-local state.",
+              "summary": "NOVA uses FlexLayout in a dark VS Code-style shell. Graph, Inspector, Outline, Search, Activity, and Node Property views share one dockable and pop-out workspace. Standard panels reopen from View > Panels; Node Property opens in the Inspector area and can be moved or popped out. The serialized arrangement is stored in the selected project file rather than browser-local state.",
               "rationale": "Users need to arrange the workspace around their current task without losing access to the graph and contextual node information.",
               "created_at": "2026-09-15T14:47:10.222Z",
-              "modified_at": "2026-09-16T07:28:51.524Z",
+              "modified_at": "2026-09-21T13:02:47.220Z",
               "children": [],
               "links": []
             },
@@ -218,10 +218,10 @@
                 "derived-from-context"
               ],
               "main_tag": "tool-development",
-              "summary": "The Electron app validates schema-7 projects in its main process, performs atomic immediate saves, watches the open mindmap.json for external changes, and remembers the last successfully opened or saved project path in Electron's per-user settings. Startup validates that remembered path, tries conventional development or packaged locations when absent, and prompts for a project if none exists. Graph state, tag-filter mode and selection, expanded nodes, coordinates, and workspace arrangement remain in the project JSON; the machine-local absolute path does not.",
+              "summary": "The Electron app validates schema-7 projects in its main process, performs atomic immediate saves, watches the open project file for external changes, and remembers the last successfully opened or saved project path in Electron's per-user settings. Startup validates that remembered path, tries nova.json in conventional development or packaged locations when absent, and prompts for a project if none exists. nova.json is only the default filename: opening, saving, watching, assistant access, and CLI operations support any user-selected filename. Graph state, tag-filter mode and selection, expanded nodes, coordinates, and workspace arrangement remain in the project JSON; the machine-local absolute path does not.",
               "rationale": "The Electron replacement needs safe schema-compatible persistence and practical editing/navigation parity before the Tkinter viewer can eventually be retired.",
               "created_at": "2026-09-15T00:00:00.000Z",
-              "modified_at": "2026-09-18T11:00:44.765Z",
+              "modified_at": "2026-09-21T13:02:49.324Z",
               "children": [
                 {
                   "id": "08399b46-166a-4afc-8436-529f56b351f1",
@@ -691,10 +691,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "The Electron viewer includes a dockable multi-provider AI Assistant panel supporting OpenAI's Responses API and FhGenie's OpenAI-compatible Chat Completions API. It reads the applicable AGENTS.md instructions used in the project and operates only on the currently loaded mindmap.json through narrow, validated project tools rather than unrestricted filesystem access. Electron main owns provider requests, credentials, schema validation, atomic writes, and explicit renderer update broadcasts. Provider-specific models and encrypted credentials are user-local settings; chat history remains session state rather than knowledge-map content.",
+          "summary": "The Electron viewer includes a dockable multi-provider AI Assistant panel supporting OpenAI's Responses API and FhGenie's OpenAI-compatible Chat Completions API. It reads the applicable AGENTS.md instructions used in the project and operates only on the currently loaded project file, regardless of its filename, through narrow, validated project tools rather than unrestricted filesystem access. Electron main owns provider requests, credentials, schema validation, atomic writes, and explicit renderer update broadcasts. Provider-specific models and encrypted credentials are user-local settings; chat history remains session state rather than knowledge-map content.",
           "rationale": "Users should be able to create, summarize, question, research, link, and tag knowledge conversationally while preserving the existing project-file boundary, instruction contract, and automatic UI synchronization.",
           "created_at": "2026-08-11T00:00:00.000Z",
-          "modified_at": "2026-09-16T12:36:33.487Z",
+          "modified_at": "2026-09-21T13:02:51.273Z",
           "children": [
             {
               "id": "assistant-provider-and-credential-boundary",
@@ -707,10 +707,10 @@
                 "user"
               ],
               "main_tag": "tool-development",
-              "summary": "The assistant exposes an explicit OpenAI or FhGenie provider selector, discovers models for the selected account, remembers one model per provider, and provides provider-specific Save securely and Delete API key actions. Credentials remain outside mindmap.json and the renderer; Electron main encrypts each provider key separately with OS-backed safeStorage and stores only ciphertext in userData. Provider changes and key deletion invalidate pending approvals.",
+              "summary": "The assistant exposes an explicit OpenAI or FhGenie provider selector, discovers models for the selected account, remembers one model per provider, and provides provider-specific Save securely and Delete API key actions. Credentials remain outside the project file and the renderer; Electron main encrypts each provider key separately with OS-backed safeStorage and stores only ciphertext in userData. Provider changes and key deletion invalidate pending approvals.",
               "rationale": "A provider-neutral UI must not assume interchangeable token formats or expose long-lived secrets to project files, renderer storage, logs, prompts, or model output.",
               "created_at": "2026-09-16T11:28:52.302Z",
-              "modified_at": "2026-09-16T12:59:20.945Z",
+              "modified_at": "2026-09-21T13:02:53.343Z",
               "children": [
                 {
                   "id": "fhgenie-api-web-model-catalog-gap",
@@ -944,10 +944,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "Proposed embedding-only note window: a user writes a free-form note; local semantic retrieval ranks relevant nodes, flags potential duplicates, proposes a parent, categories, and similarity-based links, and recommends whether to update an existing node or create a new child node. The user may edit the proposal or press Apply; only then is the structured change written to mindmap.json.",
+          "summary": "Proposed embedding-only note window: a user writes a free-form note; local semantic retrieval ranks relevant nodes, flags potential duplicates, proposes a parent, categories, and similarity-based links, and recommends whether to update an existing node or create a new child node. The user may edit the proposal or press Apply; only then is the structured change written to the selected project file.",
           "rationale": "The knowledge map needs a low-resource, private way to route notes into its existing structure even when an optional chat model is not enabled.",
           "created_at": "2026-08-11T00:00:00.000Z",
-          "modified_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-09-21T13:02:55.371Z",
           "children": [],
           "links": []
         },
@@ -1060,10 +1060,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "NOVA release 8.0.1 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, and mindmap.json. The product is named NOVA (Networked Organization & Visualization Assistant), while schema 7 remains format-compatible. Portable project instructions describe schema 7 and invoke NOVA.exe without coupling external users to source-tree paths. The untouched Python viewer remains a legacy schema-4 tool and is not an authority for or writer of schema 7.",
+          "summary": "NOVA release 8.0.1 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, and repository-default nova.json project. nova.json is a conventional default rather than a required filename; every project path accepted from the user or CLI remains supported. The product is named NOVA (Networked Organization & Visualization Assistant), while schema 7 remains format-compatible. Portable project instructions describe schema 7 and invoke NOVA.exe without coupling external users to source-tree paths or a fixed project filename. The untouched Python viewer remains a legacy schema-4 tool and is not an authority for or writer of schema 7.",
           "rationale": "The viewer, canonical map format, and maintenance instructions must evolve together so UI or data changes do not silently make the documented contract inaccurate.",
           "created_at": "2026-09-15T14:47:10.222Z",
-          "modified_at": "2026-09-18T11:24:18.938Z",
+          "modified_at": "2026-09-21T13:02:57.383Z",
           "children": [
             {
               "id": "mindmap-versioning-rules",
@@ -1326,16 +1326,290 @@
   ],
   "view": {
     "expanded": [
-      "knowledge-map-viewer"
+      "knowledge-map-viewer",
+      "electron-knowledge-map-rebuild-plan",
+      "electron-project-directory",
+      "electron-portable-distribution-and-cli-plan",
+      "electron-core-viewer-implementation",
+      "semantic-zoom-graph-rendering",
+      "knowledge-map-layout-and-dragging",
+      "large-map-performance-optimization",
+      "local-knowledge-map-assistant",
+      "assistant-provider-and-credential-boundary",
+      "fhgenie-web-search-api-gap",
+      "assistant-project-scoped-tools",
+      "assistant-fhgenie-provider-support",
+      "knowledge-map-project-creation",
+      "mindmap-version-contract",
+      "recursive-node-schema-v3",
+      "recursive-node-viewer-ui"
     ],
     "tag_filter_mode": "exclude",
     "tag_filter_tags": [],
     "layout_compact": false,
-    "positions": {},
-    "zoom": 1,
+    "positions": {
+      "knowledge-map-viewer": [
+        600,
+        400
+      ],
+      "electron-knowledge-map-rebuild-plan": [
+        292.0635039810729,
+        -89.89163307102382
+      ],
+      "knowledge-map-navigation": [
+        839.0380127651482,
+        122.95956115417184
+      ],
+      "knowledge-map-editing": [
+        937.8805459534153,
+        385.52428808251074
+      ],
+      "knowledge-map-save-safety": [
+        433.81938761469627,
+        242.23996482014277
+      ],
+      "knowledge-map-viewer-smoke-test": [
+        801.4699559602307,
+        458.5030199607597
+      ],
+      "knowledge-map-rationale-editor": [
+        456.0101063587952,
+        557.1642121228008
+      ],
+      "knowledge-map-work-categories": [
+        668.1045418571055,
+        189.75860932079388
+      ],
+      "knowledge-map-edge-label-layout": [
+        915.2407135675182,
+        561.3377820957309
+      ],
+      "item-reference-granularity": [
+        380.2732053131727,
+        411.15359356689777
+      ],
+      "knowledge-map-layout-and-dragging": [
+        487.066229203778,
+        1406.1424357744058
+      ],
+      "knowledge-map-weighted-view": [
+        577.8215176113018,
+        681.1223989965087
+      ],
+      "local-knowledge-map-assistant": [
+        972.774815008448,
+        1066.973026820508
+      ],
+      "embedding-note-intake-workflow": [
+        796.3912144593096,
+        300.4753671234255
+      ],
+      "knowledge-map-startup-and-navigation": [
+        293.428695456787,
+        556.6566590682207
+      ],
+      "knowledge-map-project-creation": [
+        692.4800859903125,
+        -724.6295579282851
+      ],
+      "canonical-mindmap-template": [
+        753.9573429923199,
+        616.4021530588407
+      ],
+      "knowledge-map-item-explosion": [
+        525.7912826990714,
+        75.04470533529766
+      ],
+      "mindmap-version-contract": [
+        743.4002738340688,
+        -371.0991220860883
+      ],
+      "electron-project-directory": [
+        -121.93588761105956,
+        13.024100567698214
+      ],
+      "electron-run-as-node-startup-fix": [
+        -324.75125167385033,
+        -60.22675072101202
+      ],
+      "electron-dev-server-url-fix": [
+        -320.5473107275012,
+        104.17372029447189
+      ],
+      "electron-portable-distribution-and-cli-plan": [
+        1135.2730888844067,
+        -185.40614065253158
+      ],
+      "project-cli-implementation": [
+        1326.9466900084237,
+        -76.89066456247535
+      ],
+      "5fc645a2-1e09-4b62-b984-5eff5c95fd6a": [
+        1277.492196507013,
+        -356.7716516285439
+      ],
+      "f067182a-2297-46cc-8ebc-f1904363eb05": [
+        1395.4758684710039,
+        -239.60193424312482
+      ],
+      "electron-dockable-workspace": [
+        82.86168099212902,
+        -68.58014757707885
+      ],
+      "electron-core-viewer-implementation": [
+        1078.668139711572,
+        -739.606065055306
+      ],
+      "08399b46-166a-4afc-8436-529f56b351f1": [
+        1230.090277179629,
+        -911.6026265728137
+      ],
+      "semantic-zoom-graph-rendering": [
+        154.2579457752327,
+        966.9928708370198
+      ],
+      "information-weighted-node-bubbles": [
+        76.53022997935884,
+        771.529599652187
+      ],
+      "graph-multiselect-and-group-drag": [
+        266.5237297679899,
+        1171.3681706301006
+      ],
+      "automatic-category-color-palette": [
+        -40.88221714237351,
+        897.994498665308
+      ],
+      "node-hover-content-tooltip": [
+        82.64984380614378,
+        1195.9908990996964
+      ],
+      "tag-centric-electron-node-editing": [
+        -52.58836130809161,
+        1075.1085984583851
+      ],
+      "electron-guid-node-identity": [
+        315.9262247413768,
+        830.5414032246157
+      ],
+      "hierarchy-weighted-electron-relayout": [
+        374.1677030595944,
+        1008.5667460574933
+      ],
+      "electron-local-application-boundary": [
+        278.38180745554337,
+        -304.0100336833505
+      ],
+      "tkinter-viewer-retirement-plan": [
+        104.33505126326176,
+        -238.47417661390648
+      ],
+      "large-map-performance-optimization": [
+        448.41883934077214,
+        1626.8107882668876
+      ],
+      "large-map-performance-benchmark": [
+        409.6173311489722,
+        1803.4821525022357
+      ],
+      "assistant-provider-and-credential-boundary": [
+        -32.459907454498186,
+        1472.5849233642716
+      ],
+      "fhgenie-api-web-model-catalog-gap": [
+        -243.92863044995786,
+        1544.2300816397885
+      ],
+      "fhgenie-web-search-api-gap": [
+        -285.7406603687717,
+        2020.8070394911892
+      ],
+      "assistant-owned-web-search-layer": [
+        -460.64801406836943,
+        2082.384490471304
+      ],
+      "assistant-project-scoped-tools": [
+        1647.3531439180754,
+        481.91609089157254
+      ],
+      "5a3e1328-dcf2-4fec-9122-8b0985761b5a": [
+        1844.5612611273605,
+        399.80605555232097
+      ],
+      "assistant-capability-modes": [
+        1186.6306104352036,
+        1015.087205534071
+      ],
+      "assistant-chat-input-availability": [
+        995.2507987755215,
+        1268.3497017597188
+      ],
+      "assistant-new-chat-context-reset": [
+        1159.4568807330086,
+        1200.626284107982
+      ],
+      "assistant-fhgenie-provider-support": [
+        887.2057839771021,
+        1777.8466939204634
+      ],
+      "fhgenie-default-mindmap-model": [
+        906.9960917505199,
+        1972.239874003679
+      ],
+      "project-root-node-schema-design": [
+        712.3197785301146,
+        -957.6644571602735
+      ],
+      "mindmap-versioning-rules": [
+        654.86622449116,
+        -557.4076678947387
+      ],
+      "mindmap-newer-schema-rejection": [
+        551.4357127955986,
+        -428.19258063478003
+      ],
+      "electron-live-project-schema-v5": [
+        955.2244661208222,
+        -451.8607923652723
+      ],
+      "electron-tag-filter-schema-v6": [
+        925.1387745529522,
+        -260.5118552292152
+      ],
+      "recursive-node-schema-v3": [
+        1190.9099672200896,
+        127.54715575453375
+      ],
+      "item-to-child-node-migration": [
+        1386.2281661031063,
+        219.9185557003289
+      ],
+      "recursive-node-viewer-ui": [
+        401.19184983012013,
+        -640.1322940140205
+      ],
+      "collapsed-relation-bubbling": [
+        334.1108726719742,
+        -848.6958912825723
+      ],
+      "global-hierarchy-visibility-controls": [
+        202.08516197461316,
+        -741.4639062821032
+      ],
+      "persistent-hierarchy-view-state": [
+        1262.6836239751303,
+        334.84232300192286
+      ],
+      "llm-context-schema-v4": [
+        824.5376680215342,
+        -586.9322227322752
+      ]
+    },
+    "zoom": 0.9906064848790231,
     "viewport": [
-      0,
-      0
-    ]
+      -123.60866767143239,
+      13.522677458187303
+    ],
+    "layout_mode": "hierarchy"
   }
 }

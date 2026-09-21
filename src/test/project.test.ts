@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { addLlmInstruction, changeProjectLink, children, createProjectFile, createProjectNode, defineProjectTag, deleteProjectNode, findNode, moveProjectNode, mutateProject, nodes, projectRoot, readProject, removeLlmInstruction, removeProjectTagDefinition, setLlmContextSummary, updateProjectNode, validateMap, writeProjectAtomic } from "../main/project";
 
-async function fixture(): Promise<{ directory: string; file: string }> { const directory = await fs.mkdtemp(path.join(os.tmpdir(), "mindmap-cli-test-")), file = path.join(directory, "mindmap.json"); await createProjectFile(file, "Test project", "Test description"); return { directory, file }; }
+async function fixture(): Promise<{ directory: string; file: string }> { const directory = await fs.mkdtemp(path.join(os.tmpdir(), "nova-cli-test-")), file = path.join(directory, "arbitrary-project-name.json"); await createProjectFile(file, "Test project", "Test description"); return { directory, file }; }
 
 test("project helper lifecycle preserves a valid protected-root map", async (context) => {
   const { directory, file } = await fixture(); context.after(() => fs.rm(directory, { recursive: true, force: true }));

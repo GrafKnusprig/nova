@@ -2,8 +2,9 @@
 
 ## Purpose and required workflow
 
-`mindmap.json` is the project's persistent knowledge, research, and development
-record. It is a semantic knowledge graph, not a chat transcript. It must remain
+`nova.json` is this repository's default project file. A project file may use
+any filename; commands always operate on the path passed with `--project`. It is
+a semantic knowledge graph, not a chat transcript. It must remain
 understandable without the conversation that produced it and detailed enough to
 reconstruct research, methods, decisions, implementation history, experiments,
 evidence, findings, limitations, rejected alternatives, and future work.
@@ -136,7 +137,7 @@ Windows PowerShell, a typical invocation is
 `& ".\NOVA.exe" cli`; use the actual filename supplied with the
 release.
 
-Every command requires `--project <mindmap.json>`, emits JSON, and returns a
+Every command requires `--project <project-file.json>`, emits JSON, and returns a
 nonzero exit code with a JSON error on failure.
 
 ```text

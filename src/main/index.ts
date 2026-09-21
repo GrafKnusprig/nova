@@ -19,7 +19,7 @@ async function rememberedProjectPath(): Promise<string | undefined> { for (const
 async function rememberProjectPath(filePath: string): Promise<void> { const destination = settingsPath(); await fs.mkdir(path.dirname(destination), { recursive: true }); await fs.writeFile(destination, `${JSON.stringify({ lastProjectPath: path.resolve(filePath) }, null, 2)}\n`, "utf8"); }
 async function startupProjectPath(): Promise<string> {
   const remembered = await rememberedProjectPath(); if (remembered) return remembered;
-  const candidates = [path.resolve(app.getAppPath(), "..", "..", "mindmap.json"), path.resolve(process.cwd(), "mindmap.json"), path.join(path.dirname(app.getPath("exe")), "mindmap.json")];
+  const candidates = [path.resolve(app.getAppPath(), "..", "..", "nova.json"), path.resolve(process.cwd(), "nova.json"), path.join(path.dirname(app.getPath("exe")), "nova.json")];
   for (const candidate of [...new Set(candidates)]) try { await fs.access(candidate); return candidate; } catch { /* Try the next conventional location. */ }
   const result = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); if (result.canceled || !result.filePaths[0]) throw new Error("No knowledge-map project was selected."); return result.filePaths[0];
 }
@@ -57,7 +57,7 @@ function registerIpc(): void {
   ipcMain.handle("mindmap:load-default", async () => loadStartupMap());
   ipcMain.handle("mindmap:open", async () => { const result = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); return result.canceled ? undefined : readMap(result.filePaths[0]); });
   ipcMain.handle("mindmap:save", async (_event, data: unknown) => { if (!currentMapPath) throw new Error("Choose a project destination first."); await atomicWrite(currentMapPath, data); return currentMapPath; });
-  ipcMain.handle("mindmap:save-as", async (_event, data: unknown) => { const result = await dialog.showSaveDialog({ title: "Save knowledge-map project", defaultPath: currentMapPath ?? "mindmap.json", filters: [{ name: "Mind-map project", extensions: ["json"] }] }); if (result.canceled || !result.filePath) return undefined; const resolved = path.resolve(result.filePath); await atomicWrite(resolved, data); currentMapPath = resolved; startWatcher(resolved); await rememberProjectPath(resolved); return resolved; });
+  ipcMain.handle("mindmap:save-as", async (_event, data: unknown) => { const result = await dialog.showSaveDialog({ title: "Save knowledge-map project", defaultPath: currentMapPath ?? "nova.json", filters: [{ name: "Mind-map project", extensions: ["json"] }] }); if (result.canceled || !result.filePath) return undefined; const resolved = path.resolve(result.filePath); await atomicWrite(resolved, data); currentMapPath = resolved; startWatcher(resolved); await rememberProjectPath(resolved); return resolved; });
   ipcMain.handle("assistant:status", () => assistant.status());
   ipcMain.handle("assistant:set-provider", (_event, provider: unknown) => assistant.setProvider(assistantProvider(provider)));
   ipcMain.handle("assistant:save-key", (_event, provider: unknown, apiKey: unknown) => assistant.saveKey(assistantProvider(provider), stringValue(apiKey, "API key")));

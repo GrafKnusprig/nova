@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const source = path.resolve(process.argv[2] ?? "mindmap.json");
+const source = path.resolve(process.argv[2] ?? "nova.json");
 const document = JSON.parse(await readFile(source, "utf8"));
 if (document.version !== 6) throw new Error(`Expected schema 6, received ${document.version}.`);
 if (!document.project || typeof document.project.name !== "string" || typeof document.project.summary !== "string" || !Array.isArray(document.nodes)) throw new Error("Schema-6 project metadata or nodes are invalid.");

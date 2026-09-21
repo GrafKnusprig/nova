@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const source = path.resolve(process.argv[2] ?? "mindmap.json");
+const source = path.resolve(process.argv[2] ?? "nova.json");
 const document = JSON.parse(await readFile(source, "utf8"));
 if (document.version !== 4) throw new Error(`Expected schema 4, received ${document.version}.`);
 const migratedAt = new Date().toISOString();
