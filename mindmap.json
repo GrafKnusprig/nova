@@ -94,19 +94,20 @@
                 },
                 {
                   "id": "electron-portable-distribution-and-cli-plan",
-                  "title": "Portable distribution and project CLI plan",
+                  "title": "Windows distribution and project CLI",
                   "tags": [
                     "tool-development",
                     "project-governance",
                     "decision",
-                    "todo",
+                    "implementation",
+                    "implemented",
                     "user"
                   ],
                   "main_tag": "tool-development",
-                  "summary": "The user confirmed the CLI-centered integration design. Viewer 7.1.0 now supplies the shared domain layer, deterministic CLI, and optimistic revision checks. The remaining distribution task is a Windows zip containing one portable Electron executable plus the authoritative AGENTS.md and a valid example schema-7 project so end users need neither Node.js nor Python.",
+                  "summary": "NOVA separates compilation from installer packaging: npm run build performs TypeScript checks, creates the Vite renderer output, copies AGENTS.md into dist, and compiles Electron main/preload code; npm run package runs that build and then Electron Builder for Windows. A clean packaging test produced the x64 NSIS installer dist/NOVA-8.0.1-x64.exe plus its blockmap and unpacked application. The shared domain layer also supplies the deterministic schema-7 CLI and optimistic revision checks.",
                   "rationale": "The map must remain an open JSON knowledge record that both the viewer and external LLM agents can maintain, while end users should need neither Node.js nor Python and concurrent writers should not silently lose changes.",
                   "created_at": "2026-09-17T07:56:12.945Z",
-                  "modified_at": "2026-09-21T11:47:42.622Z",
+                  "modified_at": "2026-09-21T12:42:04.771Z",
                   "children": [
                     {
                       "id": "project-cli-implementation",
