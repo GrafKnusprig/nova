@@ -147,10 +147,10 @@
                         "user"
                       ],
                       "main_tag": "tool-development",
-                      "summary": "NOVA now has a standalone Git repository at C:\\Users\\unger\\Documents\\git\\nova. The extracted application history retains its relevant commits, with all reachable author and committer identities set to Philipp Unger <lipp-phinger@gmx.de> and no inherited remote. Its root AGENTS.md is packaged unchanged into dist/AGENTS.md. A standalone production build passed TypeScript checks, the Vite renderer build, the guidance-file copy, and Electron main/preload compilation.",
+                      "summary": "NOVA has a standalone Git repository at C:\\Users\\unger\\Documents\\git\\nova. The extracted application history retains its relevant commits, with all reachable author and committer identities set to Philipp Unger <lipp-phinger@gmx.de>. The repository-local identity uses the same name and email, and origin points to https://github.com/GrafKnusprig/nova.git; master was published there and tracks origin/master. Its root AGENTS.md is packaged unchanged into dist/AGENTS.md. A standalone production build passed TypeScript checks, the Vite renderer build, the guidance-file copy, and Electron main/preload compilation.",
                       "rationale": "A dedicated repository lets the versatile NOVA application evolve independently while retaining its application-development history.",
                       "created_at": "2026-09-17T10:47:51.122Z",
-                      "modified_at": "2026-09-21T12:27:24.529Z",
+                      "modified_at": "2026-09-21T13:20:20.920Z",
                       "children": [],
                       "links": []
                     },
