@@ -1,0 +1,1340 @@
+{
+  "version": 7,
+  "viewer_version": "8.0.1",
+  "project": {
+    "root_node_id": "knowledge-map-viewer"
+  },
+  "llm_context": {
+    "summary": "This knowledge map is the persistent development record for NOVA, the standalone schema-7 knowledge-map desktop application.",
+    "instructions": [
+      "Record only knowledge about NOVA product design, architecture, implementation, testing, packaging, documentation, limitations, and future work.",
+      "Do not add content from knowledge-map projects that are opened or maintained with NOVA."
+    ],
+    "tag_definitions": {}
+  },
+  "nodes": [
+    {
+      "id": "knowledge-map-viewer",
+      "title": "NOVA",
+      "tags": [
+        "tool-development",
+        "project-governance",
+        "implementation"
+      ],
+      "main_tag": "tool-development",
+      "summary": "NOVA (Networked Organization & Visualization Assistant) is a standalone Electron application for creating, viewing, editing, validating, and maintaining schema-7 semantic knowledge maps.",
+      "rationale": "This root contains the architecture, implementation history, product decisions, validation evidence, limitations, and future work for NOVA itself.",
+      "created_at": "2026-09-15T14:47:10.222Z",
+      "modified_at": "2026-09-15T14:47:10.222Z",
+      "children": [
+        {
+          "id": "electron-knowledge-map-rebuild-plan",
+          "title": "Electron knowledge-map rebuild plan",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "decision",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Replacement of the Tkinter knowledge-map viewer with a self-contained dark Electron application using TypeScript and React. Electron main owns native file dialogs, schema validation, atomic persistence, external-file watching, and remembered-project startup; the renderer owns shared workspace state, graph rendering, editing, and conflict-aware drafts. Schema 7 treats mindmap.json as the complete live project file, including its protected project root, dock/popout layout, and inclusive or exclusive graph filters.",
+          "rationale": "The user wants a modern IDE-like workspace in which functional panels can be docked, moved, detached, closed, and reopened. The scope is only the mind-map visualizer, so retaining a Python runtime or introducing a separate backend adds complexity without a corresponding capability benefit. The graph should remain legible and performant at scale through progressive detail as the user zooms in.",
+          "created_at": "2026-09-15T00:00:00.000Z",
+          "modified_at": "2026-09-17T07:56:12.945Z",
+          "children": [
+            {
+              "id": "electron-project-directory",
+              "title": "Electron project directory",
+              "tags": [
+                "tool-development",
+                "implementation",
+                "active",
+                "derived-from-context"
+              ],
+              "main_tag": "tool-development",
+              "summary": "The initial NOVA scaffold combined Electron 39, React 19, TypeScript, Vite, PixiJS, and FlexLayout with a restricted preload bridge, dark renderer shell, native file API, menus, and production build. Later releases superseded the initial schema and presentation details.",
+              "rationale": "An isolated Electron application allowed incremental development and parity testing while the TypeScript implementation matured.",
+              "created_at": "2026-09-15T00:00:00.000Z",
+              "modified_at": "2026-09-15T14:52:37.626Z",
+              "children": [
+                {
+                  "id": "electron-run-as-node-startup-fix",
+                  "title": "Electron run-as-Node startup fix",
+                  "tags": [
+                    "tool-development",
+                    "issue",
+                    "resolved",
+                    "derived-from-context"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The development shell inherited ELECTRON_RUN_AS_NODE=1, which made Electron execute the compiled main entry as plain Node and left Electron's app API undefined. The dev and start scripts now use Windows cmd set ELECTRON_RUN_AS_NODE= to remove the variable before launching node_modules/.bin/electron.cmd; verification reports Electron 39.8.10 rather than Node 22.22.1.",
+                  "rationale": "The desktop runtime must launch in Electron mode so the secure BrowserWindow and native lifecycle APIs are available.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-15T00:00:00.000Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "electron-dev-server-url-fix",
+                  "title": "Electron development-server URL fix",
+                  "tags": [
+                    "tool-development",
+                    "issue",
+                    "resolved",
+                    "derived-from-context"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The Windows npm development command initially omitted Vite's port when setting VITE_DEV_SERVER_URL, so Electron loaded http://127.0.0.1/ and showed a blank window. The command now preserves :5173 and Vite is configured with --strictPort, preventing a second server from silently moving to a port Electron does not use.",
+                  "rationale": "Electron and Vite must agree on one explicit local URL for the renderer to load reliably.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-15T00:00:00.000Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "electron-portable-distribution-and-cli-plan",
+                  "title": "Portable distribution and project CLI plan",
+                  "tags": [
+                    "tool-development",
+                    "project-governance",
+                    "decision",
+                    "todo",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The user confirmed the CLI-centered integration design. Viewer 7.1.0 now supplies the shared domain layer, deterministic CLI, and optimistic revision checks. The remaining distribution task is a Windows zip containing one portable Electron executable plus the authoritative AGENTS.md and a valid example schema-7 project so end users need neither Node.js nor Python.",
+                  "rationale": "The map must remain an open JSON knowledge record that both the viewer and external LLM agents can maintain, while end users should need neither Node.js nor Python and concurrent writers should not silently lose changes.",
+                  "created_at": "2026-09-17T07:56:12.945Z",
+                  "modified_at": "2026-09-21T11:47:42.622Z",
+                  "children": [
+                    {
+                      "id": "project-cli-implementation",
+                      "title": "Deterministic project CLI",
+                      "tags": [
+                        "tool-development",
+                        "project-governance",
+                        "implementation",
+                        "implemented",
+                        "user"
+                      ],
+                      "main_tag": "tool-development",
+                      "summary": "Viewer 7.1.0 provides a headless JSON-in/JSON-out project CLI for init, validate, collision-checked UUID generation, list, get, node create/update/move/delete, semantic link add/remove, and deterministic maintenance of the project-specific LLM context, instructions, and tag definitions. GUI and CLI operations share schema validation, node traversal, protected-root rules, timestamp handling, link and view cleanup, atomic file replacement, and stale-revision detection. Text fields can also be supplied from files, and AGENTS.md documents the executable and development command forms for external AI agents.",
+                      "rationale": "Deterministic structural operations keep schema mechanics out of agent prompts, prevent routine format corruption, and let external AI focus on semantic classification, content, hierarchy, and relationships.",
+                      "created_at": "2026-09-17T08:10:37.458Z",
+                      "modified_at": "2026-09-17T08:10:37.458Z",
+                      "children": [],
+                      "links": [
+                        {
+                          "target": "electron-guid-node-identity",
+                          "relation": "implements"
+                        },
+                        {
+                          "target": "knowledge-map-save-safety",
+                          "relation": "implements"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "5fc645a2-1e09-4b62-b984-5eff5c95fd6a",
+                      "title": "Standalone application repository boundary",
+                      "tags": [
+                        "tool-development",
+                        "project-governance",
+                        "decision",
+                        "implementation",
+                        "user"
+                      ],
+                      "main_tag": "tool-development",
+                      "summary": "NOVA now has a standalone Git repository at C:\\Users\\unger\\Documents\\git\\nova. The extracted application history retains its relevant commits, with all reachable author and committer identities set to Philipp Unger <lipp-phinger@gmx.de> and no inherited remote. Its root AGENTS.md is packaged unchanged into dist/AGENTS.md. A standalone production build passed TypeScript checks, the Vite renderer build, the guidance-file copy, and Electron main/preload compilation.",
+                      "rationale": "A dedicated repository lets the versatile NOVA application evolve independently while retaining its application-development history.",
+                      "created_at": "2026-09-17T10:47:51.122Z",
+                      "modified_at": "2026-09-21T12:27:24.529Z",
+                      "children": [],
+                      "links": []
+                    },
+                    {
+                      "id": "f067182a-2297-46cc-8ebc-f1904363eb05",
+                      "title": "Bundled AGENTS.md build artifact",
+                      "tags": [
+                        "tool-development",
+                        "implementation",
+                        "user"
+                      ],
+                      "main_tag": "implementation",
+                      "summary": "The NOVA build copies the repository-root AGENTS.md into dist/AGENTS.md after the Vite renderer build and before Electron packaging. Electron Builder packages dist/**, so the authoritative guidance file is included with the application. Hash comparison verified that the built copy matches its source.",
+                      "rationale": "AGENTS.md is essential operational guidance and must ship with NOVA.",
+                      "created_at": "2026-09-21T11:47:42.620Z",
+                      "modified_at": "2026-09-21T11:47:42.620Z",
+                      "children": [],
+                      "links": []
+                    }
+                  ],
+                  "links": [
+                    {
+                      "target": "electron-guid-node-identity",
+                      "relation": "extends"
+                    },
+                    {
+                      "target": "knowledge-map-save-safety",
+                      "relation": "depends-on"
+                    }
+                  ]
+                }
+              ],
+              "links": [
+                {
+                  "target": "knowledge-map-viewer",
+                  "relation": "related"
+                }
+              ]
+            },
+            {
+              "id": "electron-dockable-workspace",
+              "title": "Dockable IDE-style workspace",
+              "tags": [
+                "tool-development",
+                "implementation",
+                "active",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "NOVA uses FlexLayout in a dark VS Code-style shell. Graph, Inspector, Outline, Search, Activity, and Node Property views share one dockable and pop-out workspace. Standard panels reopen from View > Panels; Node Property opens in the Inspector area and can be moved or popped out. The serialized arrangement is project state in mindmap.json rather than browser-local state.",
+              "rationale": "Users need to arrange the workspace around their current task without losing access to the graph and contextual node information.",
+              "created_at": "2026-09-15T14:47:10.222Z",
+              "modified_at": "2026-09-16T07:28:51.524Z",
+              "children": [],
+              "links": []
+            },
+            {
+              "id": "electron-core-viewer-implementation",
+              "title": "Electron core viewer implementation",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "implementation",
+                "active",
+                "derived-from-context"
+              ],
+              "main_tag": "tool-development",
+              "summary": "The Electron app validates schema-7 projects in its main process, performs atomic immediate saves, watches the open mindmap.json for external changes, and remembers the last successfully opened or saved project path in Electron's per-user settings. Startup validates that remembered path, tries conventional development or packaged locations when absent, and prompts for a project if none exists. Graph state, tag-filter mode and selection, expanded nodes, coordinates, and workspace arrangement remain in the project JSON; the machine-local absolute path does not.",
+              "rationale": "The Electron replacement needs safe schema-compatible persistence and practical editing/navigation parity before the Tkinter viewer can eventually be retired.",
+              "created_at": "2026-09-15T00:00:00.000Z",
+              "modified_at": "2026-09-18T11:00:44.765Z",
+              "children": [
+                {
+                  "id": "08399b46-166a-4afc-8436-529f56b351f1",
+                  "title": "NOVA application branding",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "decision",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "NOVA release 8.0.1 provides the complete application branding. The package, executable, installer, window titles, AI-assistant identity, CLI help, and project instructions use NOVA, Networked Organization & Visualization Assistant. The supplied icon is used for application windows and the Windows executable. At startup, the frameless splash is created at the earliest Electron-ready point; application services and the main window begin loading only after the splash is visible, and the handoff keeps it visible for at least one second. About NOVA is a compact custom dark window containing the icon, full subtitle, release version, Philipp Unger attribution, and philippraven.com link; splash artwork is reserved for startup. Application and branding pages use dark compatible scrollbars. Legacy settings locations are checked once so the rename preserves the last opened project.",
+                  "rationale": "The finished standalone tool needs one coherent identity and polished dark startup/about surfaces without losing per-user continuity during the product rename.",
+                  "created_at": "2026-09-18T11:00:44.762Z",
+                  "modified_at": "2026-09-18T11:24:05.684Z",
+                  "children": [],
+                  "links": []
+                }
+              ],
+              "links": [
+                {
+                  "target": "knowledge-map-save-safety",
+                  "relation": "preserves"
+                },
+                {
+                  "target": "knowledge-map-editing",
+                  "relation": "implements"
+                },
+                {
+                  "target": "knowledge-map-navigation",
+                  "relation": "implements"
+                }
+              ]
+            },
+            {
+              "id": "semantic-zoom-graph-rendering",
+              "title": "Semantic-zoom graph rendering",
+              "tags": [
+                "tool-development",
+                "evaluation-validation",
+                "implementation",
+                "active",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "The Electron graph keeps bubbles title-focused and never renders note content inside them. Bubble radius reflects text volume, direct children, and incoming/outgoing references. Responsive labels remain inside the circle and are non-selectable. Single-left-click selects one node for the Inspector, double-left-click toggles children, triple-left-click opens Node Property, and left-drag pans at cursor speed independently of zoom. Right-click/right-drag manages additive multi-selection, group movement, and marquee selection, with the Inspector-active member visually distinct. Deterministic main-tag colors make roots brightest and descendants progressively darker. Hover shows complete content in an unscrolled transient tooltip. Startup fits visible nodes, and re-layout combines collision forces with strong short parent-child springs and weaker long semantic-link springs.",
+              "rationale": "A dense map must remain readable when zoomed out while allowing users to access richer context naturally as they approach a node.",
+              "created_at": "2026-09-15T14:47:10.222Z",
+              "modified_at": "2026-09-17T13:20:39.939Z",
+              "children": [
+                {
+                  "id": "information-weighted-node-bubbles",
+                  "title": "Information-weighted node bubbles",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "Node radius grows with textual content, direct children, outgoing links, and incoming references. Note content stays in hover and editor views, and text selection is disabled within graph bubbles. Responsive HTML labels sit inside a mathematically inscribed rectangle whose corners remain within the circle. Titles retain an 11-pixel minimum and receive two or three cleanly clamped lines. Viewer 7.4.1 keeps the direct-child count visible at every semantic zoom level, while the main tag appears only at detailed zoom; metadata retains a 7.5-pixel minimum and wraps over at most two lines.",
+                  "rationale": "Bubble size should communicate how much knowledge a node contains while ensuring labels never overlap unrelated graph content.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-17T13:38:43.818Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "graph-multiselect-and-group-drag",
+                  "title": "Graph selection, panning, and group dragging",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "Viewer 7.12.0 uses distinct graph gestures: single left click selects without reopening Inspector, double left click toggles direct children without selecting, and triple click opens Node Property. Left-drag pans at cursor speed independently of zoom. Right-click and right-drag handle additive selection, group movement, and marquee selection. The Inspector-active node remains visually distinct. Wheel and trackpad zoom remain anchored at the pointer. Zoom magnitude is now derived continuously from normalized wheel delta rather than applying one fixed percentage to every event; tiny high-frequency trackpad deltas therefore produce tiny smooth changes while conventional mouse-wheel deltas retain practical steps. Local zoom rendering updates immediately, while project-state persistence is coalesced to at most one write per animation frame.",
+                  "rationale": "Mouse and trackpad hardware emit fundamentally different wheel event streams, so proportional delta handling and frame-coalesced persistence are required for consistent responsive zoom.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-18T07:51:01.100Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "automatic-category-color-palette",
+                  "title": "Automatic category color palette",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "Each node's first, explicitly selectable main tag is hashed to a stable pastel hue without requiring a manually maintained palette. Bubble fill, outline, and glow share that hue. Root nodes begin at high lightness and descendants darken by nine percentage points per level up to a 34-point reduction, producing strong visual hierarchy contrast.",
+                  "rationale": "Main-tag color provides immediate visual grouping, and depth-based darkening keeps root concepts prominent while communicating hierarchy without additional labels or shapes.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-15T00:00:00.000Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "node-hover-content-tooltip",
+                  "title": "Node hover content tooltip",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "Hovering over a graph bubble opens a viewport-clamped dark tooltip containing its complete title, tags, summary, rationale, direct child count, outgoing reference count, and hierarchy depth without an internal scrollbar. A single left click selects the node and updates a visible Inspector without reopening it, double click toggles its children, and triple click opens or focuses its editable Node Property view. Multiple Node Properties can coexist as shared FlexLayout popouts or docked tabs and use the same auto-growing content editor as the Inspector.",
+                  "rationale": "Users need quick access to a node's complete text without zooming further, opening another panel, or compromising overview readability.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-18T06:24:55.779Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "tag-centric-electron-node-editing",
+                  "title": "Tag-centric Electron node editing",
+                  "tags": [
+                    "tool-development",
+                    "project-governance",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The Electron Inspector and every Node Property tab or popout use one shared editor. Schema 7 stores unified tags plus a main color tag; type, status, rationale-source, category, legacy date, and raw ID controls are absent. The project-scoped tag filter supports inclusive or exclusive mode, per-tag toggles, Show all, and Hide all. In Inclusive mode highlighted tags form the inclusion set; in Exclusive mode highlighted tags are retained and unhighlighted tags are excluded, while the stored exclusion set remains compatible with existing projects. Created and modified timestamps are mandatory, visible, and application-managed. Each editor caches its own draft and warns with current/incoming comparison choices when an external project-file change affects that node.",
+                  "rationale": "One flexible tag model supports color grouping and filtering with less user-facing metadata complexity, while independent drafts prevent external writers from silently discarding unsaved user edits.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-17T11:26:26.731Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "electron-guid-node-identity",
+                  "title": "Electron GUID node identity",
+                  "tags": [
+                    "tool-development",
+                    "project-governance",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "New Electron-created nodes receive random UUIDv4 identifiers that are never displayed in the normal editor or search interface. Titles remain freely editable without changing identity or invalidating links. Existing descriptive IDs are preserved unchanged so all established hierarchy positions and semantic references remain valid.",
+                  "rationale": "Node identity must be stable and independent of mutable human-readable titles without breaking links in existing maps.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-15T00:00:00.000Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "hierarchy-weighted-electron-relayout",
+                  "title": "Hierarchy-weighted Electron re-layout",
+                  "tags": [
+                    "tool-development",
+                    "evaluation-validation",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "Viewer 7.11.0 uses deterministic weighted community detection over the complete visible graph. Communities are inferred dynamically at any hierarchy depth from both parent-child edges and semantic links. Hierarchy mode gives parent-child edges dominant weight while relation mode gives semantic links dominant weight; a community-level force graph separates weakly connected and disconnected groups before the node-level layout preserves strong local bonds. Compact remains the dense alternative. The selected layout mode and Compact state are now stored as view.layout_mode and view.layout_compact, restored after panel recreation and application restart, and validated when present. Older schema-7 maps without these backward-compatible fields perform one hierarchy-profile re-layout when Graph first opens, then save the explicit profile. View-menu Fit and Re-layout signals are consumed after one execution so closing and reopening Graph cannot replay a stale command.",
+                  "rationale": "Dynamic topology-derived grouping avoids arbitrary hierarchy levels, while persisted layout controls and one-shot commands ensure the displayed controls always describe the algorithm that produced the current graph arrangement.",
+                  "created_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-18T07:38:46.541Z",
+                  "children": [],
+                  "links": []
+                }
+              ],
+              "links": [
+                {
+                  "target": "large-map-performance-optimization",
+                  "relation": "supersedes"
+                },
+                {
+                  "target": "knowledge-map-weighted-view",
+                  "relation": "extends"
+                }
+              ]
+            },
+            {
+              "id": "electron-local-application-boundary",
+              "title": "Electron local application boundary",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "decision",
+                "active",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Electron main/preload expose a narrow, typed IPC API to the React renderer. Electron main validates requests and owns native file-picker, window, and atomic filesystem operations; a shared TypeScript domain package owns schema validation and map mutations. The renderer has no Node access and never writes map files directly. No Python process or network service is part of the production application.",
+              "rationale": "A single self-contained Electron application is simpler to package, test, and maintain for a mind-map-only tool while still protecting file writes behind a narrow privileged boundary.",
+              "created_at": "2026-09-15T14:47:10.222Z",
+              "modified_at": "2026-09-15T14:47:10.222Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "knowledge-map-save-safety",
+                  "relation": "preserves"
+                },
+                {
+                  "target": "mindmap-version-contract",
+                  "relation": "preserves"
+                }
+              ]
+            },
+            {
+              "id": "tkinter-viewer-retirement-plan",
+              "title": "Tkinter viewer retirement plan",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "todo",
+                "proposed",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "After Electron feature parity was verified, NOVA consolidated schema validation, normalization, indexed model operations, and atomic saves in the shared TypeScript domain layer, eliminating the need for a separate legacy GUI implementation.",
+              "rationale": "The standalone desktop application should have one tested runtime and one authoritative domain implementation.",
+              "created_at": "2026-09-15T14:47:10.222Z",
+              "modified_at": "2026-09-15T14:47:10.222Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "electron-local-application-boundary",
+                  "relation": "implements"
+                },
+                {
+                  "target": "knowledge-map-save-safety",
+                  "relation": "preserves"
+                }
+              ]
+            }
+          ],
+          "links": [
+            {
+              "target": "knowledge-map-viewer",
+              "relation": "supersedes"
+            }
+          ]
+        },
+        {
+          "id": "knowledge-map-navigation",
+          "title": "Knowledge map navigation",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Viewer 7.12.0 makes shared selection panel-aware and synchronizes hierarchy disclosure whenever both Outline and Graph panels are open. Every individual expansion entry point uses one shared collision-aware placement helper. Outline and Search open missing ancestors sequentially and preserve the resulting positions while focusing. Document-to-Graph position synchronization now runs in React's pre-paint layout phase, and path navigation is withheld until expansion placement completes. Consequently an Outline expansion cannot render an intermediate frame with a child's old saved coordinates before jumping to the arranged position. Show All remains the intentional bulk exception and performs one complete force re-layout. Expanding or collapsing in Graph immediately updates Outline; collapsing either view clears descendant expansion state. Closed panels are never reopened by selection and hidden Graph tabs do not focus or highlight.",
+          "created_at": "2026-08-10T00:00:00.000Z",
+          "modified_at": "2026-09-18T07:50:46.197Z",
+          "children": [],
+          "links": [],
+          "rationale": "Expansion and focus must be visually atomic: users should see the final collision-safe arrangement directly rather than an incorrect intermediate frame."
+        },
+        {
+          "id": "knowledge-map-editing",
+          "title": "Knowledge map editing",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Users can add root or child nodes, edit and reparent nodes, delete complete subtrees, and maintain semantic links. ID renames update link targets and saved view state; deletion removes links to every removed descendant after confirmation.",
+          "created_at": "2026-08-10T00:00:00.000Z",
+          "modified_at": "2026-08-10T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-save-safety",
+          "title": "Knowledge map save safety",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active"
+          ],
+          "main_tag": "tool-development",
+          "summary": "JSON writes use an adjacent temporary file followed by atomic replacement, and the application prompts before discarding unsaved changes.",
+          "created_at": "2026-08-10T00:00:00.000Z",
+          "modified_at": "2026-08-10T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-viewer-smoke-test",
+          "title": "Knowledge map viewer smoke test",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "result",
+            "active"
+          ],
+          "main_tag": "tool-development",
+          "summary": "The schema-2 viewer passed syntax parsing, real-map loading, node/item reference resolution, atomic save/reload equivalence, and an actual Tk GUI startup and graph-rendering smoke test.",
+          "created_at": "2026-08-10T00:00:00.000Z",
+          "modified_at": "2026-08-10T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-rationale-editor",
+          "title": "Knowledge map rationale editor",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "The unified node editor exposes Why fields on every root or child node and records whether each rationale came from the user or was derived from context.",
+          "rationale": "Users must be able to inspect and manually correct project motivation as easily as the factual description of what was done.",
+          "created_at": "2026-08-10T00:00:00.000Z",
+          "modified_at": "2026-08-10T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-work-categories",
+          "title": "Knowledge map work categories",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Knowledge-map nodes now use multi-value categories separate from epistemic type. The viewer displays category indicators and supports hiding or showing categories through a dynamic checklist filter.",
+          "rationale": "Scientific research, implementation, tool development, evaluation, documentation, and project-governance work need to be distinguishable without losing cross-cutting nodes that belong to more than one area.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-08-11T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-edge-label-layout",
+          "title": "Knowledge map edge label layout",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Relationship arrows now use stable gentle curves. Their labels receive opaque backgrounds and are greedily positioned across curve locations and offsets to avoid node cards and previously placed labels.",
+          "rationale": "Dense semantic links sometimes placed relationship names directly on top of arrows or other labels, reducing the readability of the knowledge map.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-08-11T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "item-reference-granularity",
+          "title": "Item reference granularity",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "decision",
+            "resolved",
+            "derived-from-context"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Resolved by schema 3: every former item is a full child node, so every record can use ordinary semantic links. Former evidence IDs were migrated to supported-by links while retaining their original targets.",
+          "rationale": "The map should retain evidence traceability without turning concise atomic items into miniature nodes that make the graph difficult to read and maintain.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-08-11T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-layout-and-dragging",
+          "title": "Knowledge map layout and dragging",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Re-layout includes card-aware collision forces and a final packing pass to reduce overlap after graph positioning. Card interaction uses a press/threshold/drag/release state machine: selection happens on click release, drag begins only after 5 pixels of movement, and scroll bounds are frozen while a card moves. Auto-scroll occurs only inside an 18-pixel outer rim and rebases the drag origin after each intentional scroll. A manual canvas press cancels the deferred startup fit, and drag release explicitly restores the prior viewport after rebuilding scroll bounds. The viewport conversion uses Tk's full scroll-region extent, correcting the node-drop jump caused by the prior overshoot.",
+          "rationale": "Overlapping cards and viewport jumps made the automatically arranged map and manual node ordering difficult to read and use.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-08-11T00:00:00.000Z",
+          "children": [
+            {
+              "id": "large-map-performance-optimization",
+              "title": "Large-map performance optimization",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "implementation",
+                "active",
+                "derived-from-context"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Viewer 3.1.1 caches flattened node and parent indexes, precomputes connectivity weights and card geometry outside force iterations, reduces redundant force and animation frames, reuses collision-search offsets, omits hierarchy-edge labels, and renders animation frames without semantic labels. Dragging moves the selected card immediately and coalesces pointer events into at most one lightweight redraw per 16 milliseconds; a full labeled render is restored on release.",
+              "rationale": "Showing the complete recursive map caused long blocking re-layout computation and visible lag because graph-wide metrics and complete labeled canvases were repeatedly rebuilt inside tight layout and pointer-event loops.",
+              "created_at": "2026-09-14T00:00:00.000Z",
+              "modified_at": "2026-09-14T00:00:00.000Z",
+              "children": [
+                {
+                  "id": "large-map-performance-benchmark",
+                  "title": "Large-map performance benchmark",
+                  "tags": [
+                    "tool-development",
+                    "evaluation-validation",
+                    "result",
+                    "active",
+                    "derived-from-context"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "With all 123 project nodes visible in an off-screen Tk smoke benchmark, the former layout computation did not finish within 30 seconds. After optimization, layout computation took about 1.09 seconds, the complete 18-frame animated re-layout took about 2.55 seconds, a full labeled redraw took about 0.24 seconds, and lightweight drag redraws averaged about 23 milliseconds across five samples.",
+                  "rationale": "Measured before-and-after timings verify that the optimization addresses the reported large-map interaction bottlenecks rather than only changing code structure.",
+                  "created_at": "2026-09-14T00:00:00.000Z",
+                  "modified_at": "2026-09-14T00:00:00.000Z",
+                  "children": [],
+                  "links": []
+                }
+              ],
+              "links": []
+            }
+          ],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-weighted-view",
+          "title": "Knowledge map weighted view",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "The viewer provides a child-node list and a view-options dialog. Dynamic cards are weighted by direct child count and incoming or outgoing hierarchy and semantic links; this weight changes card size and draws highly connected nodes toward the network centre while peripheral nodes remain farther out. Re-layout visibly animates from current positions into a deterministic force simulation with relationship-strength springs, node mass, central gravity, radial restraint for light peripheral nodes, and card-size-aware collision forces. It preserves the currently revealed hierarchy throughout re-layout. Compact local card packing prevents overlap without unnecessary large displacements. Users can instead select fixed-size cards and box or circle node shapes.",
+          "rationale": "Dense child hierarchies need an overview and direct navigation, while the graph should visually distinguish central, knowledge-rich intersections from lightweight peripheral records without forcing one visual style on every user.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-08-11T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "local-knowledge-map-assistant",
+          "title": "Local knowledge map assistant",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "implemented",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "The Electron viewer includes a dockable multi-provider AI Assistant panel supporting OpenAI's Responses API and FhGenie's OpenAI-compatible Chat Completions API. It reads the applicable AGENTS.md instructions used in the project and operates only on the currently loaded mindmap.json through narrow, validated project tools rather than unrestricted filesystem access. Electron main owns provider requests, credentials, schema validation, atomic writes, and explicit renderer update broadcasts. Provider-specific models and encrypted credentials are user-local settings; chat history remains session state rather than knowledge-map content.",
+          "rationale": "Users should be able to create, summarize, question, research, link, and tag knowledge conversationally while preserving the existing project-file boundary, instruction contract, and automatic UI synchronization.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-09-16T12:36:33.487Z",
+          "children": [
+            {
+              "id": "assistant-provider-and-credential-boundary",
+              "title": "Assistant provider and credential boundary",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "decision",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "The assistant exposes an explicit OpenAI or FhGenie provider selector, discovers models for the selected account, remembers one model per provider, and provides provider-specific Save securely and Delete API key actions. Credentials remain outside mindmap.json and the renderer; Electron main encrypts each provider key separately with OS-backed safeStorage and stores only ciphertext in userData. Provider changes and key deletion invalidate pending approvals.",
+              "rationale": "A provider-neutral UI must not assume interchangeable token formats or expose long-lived secrets to project files, renderer storage, logs, prompts, or model output.",
+              "created_at": "2026-09-16T11:28:52.302Z",
+              "modified_at": "2026-09-16T12:59:20.945Z",
+              "children": [
+                {
+                  "id": "fhgenie-api-web-model-catalog-gap",
+                  "title": "FhGenie API and web model catalogs differ",
+                  "tags": [
+                    "tool-development",
+                    "observation",
+                    "finding",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "A captured FhGenie model-configuration response resolves the web/API catalog discrepancy. Models have independent ui and api flags. The GPT 5.6 and Claude deployments shown in the web UI are ui-enabled but explicitly api:false, while API-enabled entries are on-premises MiniMax M2.5, Qwen3 Coder Next, DeepSeek V4 Flash, GLM 5.2, Teuken 7B, and the separate Z-Image image model. Consequently, the smaller project-token catalog is intentional rather than filtering performed by the Electron application. Exact token-level entitlements may still further reduce the /v1/models response.",
+                  "rationale": "Model availability should reflect the actual API catalog and distinguish access restrictions from client-side discovery defects before aliases are added manually.",
+                  "created_at": "2026-09-16T12:53:34.558Z",
+                  "modified_at": "2026-09-16T12:59:20.945Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "fhgenie-web-search-api-gap",
+                  "title": "FhGenie web search integration deferred",
+                  "tags": [
+                    "tool-development",
+                    "decision",
+                    "deferred",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "Web search is intentionally not part of the current assistant release. Although FhGenie's web UI supports search, the captured OpenAI-compatible API metadata does not document a corresponding search tool or protocol. A provider-independent public-web layer was investigated, but the user decided to keep the assistant in its currently working project-only form and reconsider search later.",
+                  "rationale": "The current assistant already satisfies the immediate workflow, so an additional external search provider, credential, privacy boundary, and retrieval pipeline are unnecessary complexity for this release.",
+                  "created_at": "2026-09-16T12:56:09.043Z",
+                  "modified_at": "2026-09-16T13:19:22.224Z",
+                  "children": [
+                    {
+                      "id": "assistant-owned-web-search-layer",
+                      "title": "Application-owned web search layer (deferred)",
+                      "tags": [
+                        "tool-development",
+                        "idea",
+                        "deferred",
+                        "user"
+                      ],
+                      "main_tag": "tool-development",
+                      "summary": "A future lightweight independent web-search layer remains feasible: Electron main could expose narrow web_search and paper_search tools backed by dedicated public search services, normalize titles, URLs, snippets, dates, and citations, and return bounded results to either LLM provider. Any future implementation must use an explicit web-access toggle, prevent private-network and local-file requests, constrain redirects, content types, response sizes, and timeouts, treat retrieved content as untrusted data, and preserve source URLs and access dates when research is written into the map. It is deliberately deferred and is not an active implementation task.",
+                      "rationale": "Provider-independent search would give API-accessible models research capability without depending on an undocumented FhGenie web-only orchestration endpoint.",
+                      "created_at": "2026-09-16T12:59:20.945Z",
+                      "modified_at": "2026-09-16T13:19:22.224Z",
+                      "children": [],
+                      "links": []
+                    }
+                  ],
+                  "links": [
+                    {
+                      "target": "assistant-fhgenie-provider-support",
+                      "relation": "extends"
+                    }
+                  ]
+                }
+              ],
+              "links": []
+            },
+            {
+              "id": "assistant-project-scoped-tools",
+              "title": "Assistant project-scoped tools",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "decision",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "The assistant receives read, search, create, update, delete, and link tools bound internally to the active project path, with IDs and timestamps generated by application helpers. It never receives a shell, arbitrary path, generic filesystem write, or direct JSON overwrite tool. Every mutation is revalidated, saved atomically, recorded in Activity, and broadcast to the renderer because application-owned writes are intentionally suppressed by the external-file watcher.",
+              "rationale": "Enforcing scope in application code is more reliable than asking a model prompt to avoid unrelated files and preserves conflict handling for every open node editor.",
+              "created_at": "2026-09-16T11:28:52.302Z",
+              "modified_at": "2026-09-17T11:08:05.091Z",
+              "children": [
+                {
+                  "id": "5a3e1328-dcf2-4fec-9122-8b0985761b5a",
+                  "title": "Recoverable assistant tool errors",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "issue",
+                    "resolved",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "Viewer 7.1.1 fixes assistant requests failing with an IPC error when a model proposes an invalid semantic-link endpoint. OpenAI and FhGenie tool loops now return malformed arguments and project-operation failures to the model as structured retryable feedback, including guidance to read current IDs and to create a node before linking it with the returned UUID. Human-readable tag and relation labels such as 'work tasks' are normalized to schema-safe lowercase kebab-case such as 'work-tasks'.",
+                  "rationale": "A mistaken model tool call should be correctable within the conversation rather than aborting the user's request, and users should be able to name tags naturally without knowing storage syntax.",
+                  "created_at": "2026-09-17T11:08:05.089Z",
+                  "modified_at": "2026-09-17T11:08:05.089Z",
+                  "children": [],
+                  "links": []
+                }
+              ],
+              "links": [
+                {
+                  "target": "electron-local-application-boundary",
+                  "relation": "extends"
+                }
+              ]
+            },
+            {
+              "id": "assistant-capability-modes",
+              "title": "Assistant capability modes and one-task approval",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "implementation",
+                "decision",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "project-governance",
+              "summary": "The assistant has three enforced modes. Draft exposes no mutation tools and keeps proposals in chat. Edit can create and update nodes and links but cannot delete nodes. Full can also permanently delete nodes and subtrees. When a task exceeds the selected mode, the assistant presents an Accept once or Decline request for the minimum required capability. Acceptance reruns only that task with the granted mode, leaves the selected mode unchanged, expires after use, and is rejected if the open project changed. The main-process policy is covered by automated capability tests.",
+              "rationale": "Users need a predictable safety boundary that supports low-risk brainstorming, normal knowledge maintenance, and explicit destructive work without granting broader or lasting authority than intended.",
+              "created_at": "2026-09-16T11:53:40.311Z",
+              "modified_at": "2026-09-16T11:53:40.311Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "assistant-project-scoped-tools",
+                  "relation": "constrains"
+                }
+              ]
+            },
+            {
+              "id": "assistant-chat-input-availability",
+              "title": "Assistant chat input remains writable",
+              "tags": [
+                "tool-development",
+                "implementation",
+                "issue",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Viewer 6.1.1 fixes the assistant message editor being unavailable despite a working connection and selected model. The editor remains writable independently of credential, model-loading, and request-busy state so users can compose text at any time. Sending remains gated until a key and model are available and while a request is running; a pending permission decision temporarily locks the editor to keep that task boundary unambiguous.",
+              "rationale": "Connection and loading state should control network submission, not prevent users from composing or preserving their next message.",
+              "created_at": "2026-09-16T12:11:15.116Z",
+              "modified_at": "2026-09-16T12:11:15.116Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "assistant-capability-modes",
+                  "relation": "related"
+                }
+              ]
+            },
+            {
+              "id": "assistant-new-chat-context-reset",
+              "title": "New assistant chat and context reset",
+              "tags": [
+                "tool-development",
+                "implementation",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Viewer 6.2.0 adds a New chat action to the assistant header. After confirmation when content exists, it deletes the visible transcript and draft input, clears errors and pending permission prompts, and asks Electron main to invalidate every outstanding one-time approval. The next message therefore starts with an empty model context while provider credentials, selected model, and permission mode remain configured.",
+              "rationale": "Users need an explicit way to discard prior conversational context without removing provider configuration or reopening the application.",
+              "created_at": "2026-09-16T12:19:43.860Z",
+              "modified_at": "2026-09-16T12:19:43.860Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "assistant-capability-modes",
+                  "relation": "related"
+                }
+              ]
+            },
+            {
+              "id": "assistant-fhgenie-provider-support",
+              "title": "FhGenie assistant provider support",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "implementation",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Viewer 6.3.1 supports FhGenie as a separately configured provider at https://fhgenie.fraunhofer.de/v1 using Bearer authentication and the OpenAI-compatible protocol supplied by the user. It discovers models through /models and supplements incomplete discovery with the known API-enabled text-model catalog. GLM 5.2 is the default only when the user has not saved an explicit FhGenie model choice. A Chat Completions adapter converts the same mode-restricted project functions into nested function-tool declarations and executes returned tool calls through the existing validated Electron-main boundary. OpenAI continues to use its native Responses adapter.",
+              "rationale": "Fraunhofer-hosted models provide institutional model access while separate encrypted credentials and a protocol adapter preserve the same project scope and permission enforcement as the OpenAI provider.",
+              "created_at": "2026-09-16T12:19:43.860Z",
+              "modified_at": "2026-09-16T13:07:40.546Z",
+              "children": [
+                {
+                  "id": "fhgenie-default-mindmap-model",
+                  "title": "GLM 5.2 is the default FhGenie mind-map model",
+                  "tags": [
+                    "tool-development",
+                    "decision",
+                    "implementation",
+                    "implemented",
+                    "derived-from-context"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The application defaults new FhGenie configurations to nvidia/GLM-5.2-NVFP4 while preserving each user's explicit saved selection. Among the captured API-enabled chat models, GLM 5.2 is non-deprecated and is positioned for complex reasoning, coding, and agentic workflows; its published model card also evaluates scientific reasoning, scientific coding, instruction following, long-context recall, and tool use. DeepSeek V4 Flash remains the preferred faster alternative. Teuken 7B's 2,048-token FhGenie limit is too small for AGENTS.md plus project context, while MiniMax M2.5 and Qwen3 Coder Next are marked deprecated in the captured FhGenie catalog.",
+                  "rationale": "Mind-map maintenance needs reliable instruction following, scientific reasoning, long context, and structured tool use more than coding specialization or minimum latency.",
+                  "created_at": "2026-09-16T13:07:40.546Z",
+                  "modified_at": "2026-09-16T13:07:40.546Z",
+                  "children": [],
+                  "links": [
+                    {
+                      "target": "fhgenie-api-web-model-catalog-gap",
+                      "relation": "derived-from"
+                    }
+                  ]
+                }
+              ],
+              "links": [
+                {
+                  "target": "assistant-provider-and-credential-boundary",
+                  "relation": "extends"
+                }
+              ]
+            }
+          ],
+          "links": []
+        },
+        {
+          "id": "embedding-note-intake-workflow",
+          "title": "Embedding note intake workflow",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "proposed",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Proposed embedding-only note window: a user writes a free-form note; local semantic retrieval ranks relevant nodes, flags potential duplicates, proposes a parent, categories, and similarity-based links, and recommends whether to update an existing node or create a new child node. The user may edit the proposal or press Apply; only then is the structured change written to mindmap.json.",
+          "rationale": "The knowledge map needs a low-resource, private way to route notes into its existing structure even when an optional chat model is not enabled.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-08-11T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-startup-and-navigation",
+          "title": "Knowledge map startup and navigation",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "The viewer opens the saved workspace and fits the visible graph. New schema-7 maps initially show the protected project root and its direct main topics. Saved maps restore expanded branches, node positions, zoom, viewport, filters, and panel arrangement. Normal node selection preserves the viewport, while child and link navigation reveals the required ancestor path and centres the destination node.",
+          "rationale": "The viewer should offer a manageable root-level entry point, predictable navigation into deep branches, and restoration of the user's working arrangement across sessions.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-09-16T13:40:15.497Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "knowledge-map-project-creation",
+          "title": "Knowledge map project creation",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "implemented",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Schema 7 represents every project with one protected root node. Its editable title and summary are the authoritative project name and description shown by the UI. New maps create this root automatically, keep it expanded, and place newly created main topics beneath it.",
+          "rationale": "Users need a safe, visible workflow for starting a new knowledge map and maintaining its project-level identity without editing raw JSON.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-09-16T13:40:15.497Z",
+          "children": [
+            {
+              "id": "project-root-node-schema-design",
+              "title": "Represent project identity with one main root node",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "decision",
+                "implementation",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Viewer 7.0.0 and schema 7 implement one protected project root whose title and summary are the authoritative project name and description. Existing top-level concepts were migrated unchanged into its children. The root remains expanded, cannot be deleted or reparented, bypasses tag filtering, drives the workspace title, and is editable through the same Inspector and Node Property interfaces as other nodes. UI and assistant creation without another parent produces a main topic beneath this root.",
+              "rationale": "A visible central project node would make project identity editable through the existing node editor and give the graph a natural single origin instead of maintaining separate, currently non-editable metadata.",
+              "created_at": "2026-09-16T13:30:59.877Z",
+              "modified_at": "2026-09-16T13:40:15.497Z",
+              "children": [],
+              "links": []
+            }
+          ],
+          "links": []
+        },
+        {
+          "id": "canonical-mindmap-template",
+          "title": "Compact agent schema contract",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "decision",
+            "implemented",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "The distributed AGENTS.md is a compact, deployment-portable schema-7 guide limited to mind-map creation, semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. It contains no application source paths, Node.js/npm workflow, release engineering, UI implementation, or performance-development instructions. Deterministic project creation and structural correctness belong to the packaged executable's validator and CLI.",
+          "rationale": "A project-maintenance AI needs the storage model and research semantics but not application-development context; removing that material reduces prompt cost and prevents unusable source commands in executable-only deployments.",
+          "created_at": "2026-09-11T00:00:00.000Z",
+          "modified_at": "2026-09-17T10:56:07.541Z",
+          "children": [],
+          "links": [
+            {
+              "target": "knowledge-map-viewer",
+              "relation": "supported-by"
+            }
+          ]
+        },
+        {
+          "id": "knowledge-map-item-explosion",
+          "title": "Knowledge map item explosion",
+          "tags": [
+            "tool-development",
+            "project-governance",
+            "implementation",
+            "superseded",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "Double-clicking a graph node expands or collapses its items as transient, readable item cards connected only to their parent by an item relation. Multiple nodes may remain expanded. Item cards are placed in collision-avoiding rings around their parent, select their real item in the inspector and preview, open the item editor on double-click, and offer item deletion in their right-click menu. A graph context menu supports blank-view actions (new node, collapse items, re-layout) and node actions (delete, explode/collapse, add item/link). The selected-item inspector separates Text preview and Item references; the latter supports navigation through a reference, while all reference editing remains in the item editor's Evidence IDs field. Redundant parent-frame and single-column-list headings are omitted to keep this focused inspector compact.",
+          "rationale": "Node summaries need an immediate graph-level overview of their underlying information without converting every item into a permanent top-level map node or requiring users to open records one by one.",
+          "created_at": "2026-08-11T00:00:00.000Z",
+          "modified_at": "2026-08-11T00:00:00.000Z",
+          "children": [],
+          "links": []
+        },
+        {
+          "id": "mindmap-version-contract",
+          "title": "Mind-map viewer and schema version contract",
+          "tags": [
+            "tool-development",
+            "documentation",
+            "project-governance",
+            "decision",
+            "active",
+            "user"
+          ],
+          "main_tag": "tool-development",
+          "summary": "NOVA release 8.0.1 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, and mindmap.json. The product is named NOVA (Networked Organization & Visualization Assistant), while schema 7 remains format-compatible. Portable project instructions describe schema 7 and invoke NOVA.exe without coupling external users to source-tree paths. The untouched Python viewer remains a legacy schema-4 tool and is not an authority for or writer of schema 7.",
+          "rationale": "The viewer, canonical map format, and maintenance instructions must evolve together so UI or data changes do not silently make the documented contract inaccurate.",
+          "created_at": "2026-09-15T14:47:10.222Z",
+          "modified_at": "2026-09-18T11:24:18.938Z",
+          "children": [
+            {
+              "id": "mindmap-versioning-rules",
+              "title": "Mindmap versioning rules",
+              "tags": [
+                "tool-development",
+                "documentation",
+                "project-governance",
+                "decision",
+                "active",
+                "derived-from-context"
+              ],
+              "main_tag": "tool-development",
+              "summary": "The Electron package version and VIEWER_VERSION use semantic versioning. SCHEMA_VERSION and the root version change only for persisted-schema changes; every viewer change must update the contract and validation, and every save writes its viewer_version.",
+              "rationale": "Separate release and schema versions distinguish UI/bug-fix evolution from data-format compatibility and make each map's writer release visible.",
+              "created_at": "2026-09-14T00:00:00.000Z",
+              "modified_at": "2026-09-15T14:52:37.626Z",
+              "children": [],
+              "links": []
+            },
+            {
+              "id": "mindmap-newer-schema-rejection",
+              "title": "Mindmap unsupported schema rejection",
+              "tags": [
+                "tool-development",
+                "documentation",
+                "project-governance",
+                "implementation",
+                "active",
+                "derived-from-context"
+              ],
+              "main_tag": "tool-development",
+              "summary": "NOVA requires exactly schema 7 and rejects obsolete or newer map schemas instead of silently rewriting incompatible data. A non-empty viewer_version is required and every save writes release 8.0.1. The branding and startup-timing release does not change the schema. The explicit schema-6-to-7 migration creates the project root without changing existing node IDs or semantic links.",
+              "rationale": "The breaking development-phase redesign deliberately omits backward compatibility, so incompatible maps must fail safely rather than risk partial or destructive edits.",
+              "created_at": "2026-09-14T00:00:00.000Z",
+              "modified_at": "2026-09-18T11:24:34.145Z",
+              "children": [],
+              "links": []
+            },
+            {
+              "id": "electron-live-project-schema-v5",
+              "title": "Electron live-project schema v5",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "implementation",
+                "superseded",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Schema 5 replaces category, type, status, rationale-source, and optional legacy date fields with unified tags, one main tag, and mandatory created_at and modified_at timestamps. The root view additionally persists hidden tag filters and the complete shared panel/popout workspace. The Electron main process watches the open file, suppresses echoes from its own atomic saves, and publishes genuine external changes to every renderer editor.",
+              "rationale": "The project file must contain both durable knowledge and the working visual context, while concurrent agent edits must update the application without silently overwriting locally drafted node changes.",
+              "created_at": "2026-09-15T14:52:37.626Z",
+              "modified_at": "2026-09-15T14:52:37.626Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "electron-core-viewer-implementation",
+                  "relation": "implemented-by"
+                },
+                {
+                  "target": "llm-context-schema-v4",
+                  "relation": "supersedes"
+                }
+              ]
+            },
+            {
+              "id": "electron-tag-filter-schema-v6",
+              "title": "Electron schema v6 interaction state",
+              "tags": [
+                "tool-development",
+                "project-governance",
+                "implementation",
+                "active",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Schema 6 replaces view.hidden_tags with an explicit tag_filter_mode and tag_filter_tags pair. Exclude mode hides nodes matching any selected tag; include mode shows only nodes matching at least one selected tag. Viewer 6.0.0 introduced zoom-correct graph dragging, docked-by-default Node Properties, and the About dialog. Viewer 6.0.1 fixes restart behavior by recording the last successful project path in machine-local Electron settings and reopening it after validation.",
+              "rationale": "Filtering semantics and visual state must persist in the project, while the machine-specific path to that project must persist separately so restarting reopens the user's actual work without polluting the portable JSON.",
+              "created_at": "2026-09-16T07:28:51.524Z",
+              "modified_at": "2026-09-16T07:28:51.524Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "electron-live-project-schema-v5",
+                  "relation": "supersedes"
+                },
+                {
+                  "target": "electron-core-viewer-implementation",
+                  "relation": "implemented-by"
+                },
+                {
+                  "target": "graph-multiselect-and-group-drag",
+                  "relation": "fixes"
+                }
+              ]
+            },
+            {
+              "id": "recursive-node-schema-v3",
+              "title": "Recursive node schema v3",
+              "tags": [
+                "tool-development",
+                "documentation",
+                "project-governance",
+                "decision",
+                "active",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Schema 3 uses one recursive node record at every hierarchy level. Complete child nodes are nested in children arrays, parents are derived from nesting, and any node can link to any other node. The schema has no items array, stored parent field, or separate evidence-reference mechanism.",
+              "rationale": "A single composable record type supports arbitrarily deep brainstorming structures and removes the artificial distinction between graph nodes and atomic notes.",
+              "created_at": "2026-09-14T00:00:00.000Z",
+              "modified_at": "2026-09-14T00:00:00.000Z",
+              "children": [
+                {
+                  "id": "item-to-child-node-migration",
+                  "title": "Item-to-child-node migration",
+                  "tags": [
+                    "tool-development",
+                    "documentation",
+                    "project-governance",
+                    "result",
+                    "active",
+                    "derived-from-context"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The project map was migrated from 17 schema-2 nodes and 98 items into 115 schema-3 nodes under four roots. Every existing ID was retained, generated titles were added to former items, inherited categories were assigned, and former evidence references became supported-by links.",
+                  "rationale": "Retaining stable IDs and reference targets preserves the knowledge graph while replacing the obsolete record type.",
+                  "created_at": "2026-09-14T00:00:00.000Z",
+                  "modified_at": "2026-09-14T00:00:00.000Z",
+                  "children": [],
+                  "links": [
+                    {
+                      "target": "item-reference-granularity",
+                      "relation": "answers"
+                    }
+                  ]
+                },
+                {
+                  "id": "recursive-node-viewer-ui",
+                  "title": "Recursive node viewer UI",
+                  "tags": [
+                    "tool-development",
+                    "project-governance",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The Inspector lists direct child nodes and root and child creation share one node editor. On the graph, double-clicking a non-root node toggles its direct children. Viewer 7.6.0 treats collapse as closing the complete displayed subtree: it removes expansion flags from the collapsed node and all descendants. Reopening therefore reveals and locally arranges only direct children instead of restoring the formerly visible deep subtree and causing overlapping partial layouts.",
+                  "rationale": "The viewer interaction should mirror the recursive data model at every depth. Reopening a collapsed branch should proceed one level at a time so every revealed level receives the same collision-aware local arrangement.",
+                  "created_at": "2026-09-14T00:00:00.000Z",
+                  "modified_at": "2026-09-17T14:45:07.288Z",
+                  "children": [
+                    {
+                      "id": "collapsed-relation-bubbling",
+                      "title": "Collapsed relation bubbling",
+                      "tags": [
+                        "tool-development",
+                        "project-governance",
+                        "implementation",
+                        "active",
+                        "user"
+                      ],
+                      "main_tag": "tool-development",
+                      "summary": "When a semantic link endpoint is hidden inside a collapsed branch, the viewer draws and lays out the relation using that endpoint's nearest visible ancestor. Links whose visible endpoints and relation are identical are rendered once; links that bubble both endpoints to the same node are omitted.",
+                      "rationale": "Collapsed branches should retain visible indications of their external relationships without producing duplicate arrows between the same visible nodes.",
+                      "created_at": "2026-09-14T00:00:00.000Z",
+                      "modified_at": "2026-09-14T00:00:00.000Z",
+                      "children": [],
+                      "links": []
+                    },
+                    {
+                      "id": "global-hierarchy-visibility-controls",
+                      "title": "Global hierarchy visibility controls",
+                      "tags": [
+                        "tool-development",
+                        "project-governance",
+                        "implementation",
+                        "active",
+                        "user"
+                      ],
+                      "main_tag": "tool-development",
+                      "summary": "Global controls can reveal every hierarchy level or collapse the graph to main topics. Viewer 7.6.1 routes both the Graph toolbar and View-menu Show all actions through one operation that first expands every parent and then automatically invokes the currently selected re-layout profile on the fully visible graph. Collapse to main topics leaves only the protected project root expanded. Existing hidden-node coordinates remain stored, while re-layout replaces positions for the newly visible complete graph.",
+                      "rationale": "Users need direct global hierarchy controls, and revealing the complete map requires immediate re-layout to prevent old per-branch positions from producing an unreadable overlap.",
+                      "created_at": "2026-09-14T00:00:00.000Z",
+                      "modified_at": "2026-09-17T14:51:35.400Z",
+                      "children": [],
+                      "links": []
+                    }
+                  ],
+                  "links": [
+                    {
+                      "target": "knowledge-map-item-explosion",
+                      "relation": "supersedes"
+                    }
+                  ]
+                },
+                {
+                  "id": "persistent-hierarchy-view-state",
+                  "title": "Persistent hierarchy view state",
+                  "tags": [
+                    "tool-development",
+                    "project-governance",
+                    "implementation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "New maps initially reveal the protected project root and its main topics. The project root ID always remains in view.expanded, while expanded lower parent IDs, positions at all visibility levels, zoom, and viewport are stored in the root view object. Re-layout operates on the visible hierarchy without collapsing branches or discarding hidden-node positions.",
+                  "rationale": "A manually organized brainstorming map should reopen with the same visible branches and spatial arrangement instead of losing the user's working context.",
+                  "created_at": "2026-09-14T00:00:00.000Z",
+                  "modified_at": "2026-09-16T13:40:15.497Z",
+                  "children": [],
+                  "links": []
+                }
+              ],
+              "links": [
+                {
+                  "target": "knowledge-map-viewer",
+                  "relation": "implemented-by"
+                }
+              ]
+            },
+            {
+              "id": "llm-context-schema-v4",
+              "title": "LLM-only project context schema v4",
+              "tags": [
+                "tool-development",
+                "documentation",
+                "project-governance",
+                "decision",
+                "active",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Schema 4 adds a root llm_context object containing a project-specific summary, instructions, and category definitions. The viewer validates and preserves this metadata but deliberately does not display or edit it. Reusable AGENTS.md instructions describe the mechanism without containing any project's domain-specific values.",
+              "rationale": "Project-specific interpretation and category meanings must travel with their own map for LLM maintenance without contaminating the reusable viewer instructions or adding non-knowledge nodes to the visual graph.",
+              "created_at": "2026-09-14T00:00:00.000Z",
+              "modified_at": "2026-09-14T00:00:00.000Z",
+              "children": [],
+              "links": [
+                {
+                  "target": "knowledge-map-work-categories",
+                  "relation": "extends"
+                }
+              ]
+            }
+          ],
+          "links": [
+            {
+              "target": "knowledge-map-viewer",
+              "relation": "part-of"
+            }
+          ]
+        }
+      ],
+      "links": []
+    }
+  ],
+  "view": {
+    "expanded": [
+      "knowledge-map-viewer"
+    ],
+    "tag_filter_mode": "exclude",
+    "tag_filter_tags": [],
+    "layout_compact": false,
+    "positions": {},
+    "zoom": 1,
+    "viewport": [
+      0,
+      0
+    ]
+  }
+}
