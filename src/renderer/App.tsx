@@ -21,6 +21,7 @@ import {
   createNode,
   descendantIds,
   emptyMap,
+  expandExternalChanges,
   flatten,
   insertNode,
   type IndexedNode,
@@ -32,6 +33,7 @@ import {
   outlineCollapsedNodeIds,
   outlineVisibleNodes,
   projectRoot,
+  recencyIntensity,
   removeNode,
   tagButtonSelected,
   updateNode,
@@ -315,13 +317,22 @@ function tagHue(tag: string): number {
   hash ^= hash >>> 16;
   return (hash >>> 0) % 360;
 }
-function nodePalette(node: IndexedNode): {
+function nodePalette(node: IndexedNode, recency?: number): {
   fill: string;
   stroke: string;
   glow: string;
 } {
   const hue = tagHue(node.main_tag);
   const depthDarkening = Math.min(34, node.depth * 9);
+  if (recency !== undefined) {
+    const recentGlow = recency * recency;
+    const recencyDepthDarkening = Math.min(18, node.depth * 4);
+    return {
+      fill: `hsl(${hue} ${34 + recency * 20}% ${27 + recency * 37 - recencyDepthDarkening}% / ${0.38 + recency * 0.56})`,
+      stroke: `hsl(${hue} ${55 + recency * 30}% ${52 + recency * 38 - recencyDepthDarkening * 0.4}% / ${0.28 + recency * 0.67})`,
+      glow: `drop-shadow(0 0 ${3 + recentGlow * 13}px hsl(${hue} 86% 68% / ${0.04 + recentGlow * 0.76}))`,
+    };
+  }
   return {
     fill: `hsl(${hue} 42% ${55 - depthDarkening}% / 0.94)`,
     stroke: `hsl(${hue} 74% ${91 - depthDarkening * 0.68}%)`,
@@ -500,6 +511,15 @@ function GraphPanel({
   const [layoutRunning, setLayoutRunning] = useState(false);
   const layoutMode = document.view.layout_mode ?? "hierarchy";
   const compactLayout = document.view.layout_compact ?? false;
+  const recencyGlow = document.view.recency_glow ?? false;
+  const liveExpand = document.view.live_expand ?? false;
+  const modifiedRange = useMemo(() => {
+    const timestamps = all.map((node) => Date.parse(node.modified_at));
+    return {
+      oldest: Math.min(...timestamps),
+      newest: Math.max(...timestamps),
+    };
+  }, [all]);
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<
     | {
@@ -996,7 +1016,16 @@ function GraphPanel({
           })}
           {placed.map(({ node, point: p }) => {
             const radius = radii.get(node.id) ?? 40,
-              palette = nodePalette(node),
+              palette = nodePalette(
+                node,
+                recencyGlow
+                  ? recencyIntensity(
+                      node.modified_at,
+                      modifiedRange.oldest,
+                      modifiedRange.newest,
+                    )
+                  : undefined,
+              ),
               detailed = zoom >= 0.72,
               label = nodeLabelMetrics(radius, detailed);
             return (
@@ -1184,6 +1213,24 @@ function GraphPanel({
           }}
         >
           Compact {compactLayout ? "on" : "off"}
+        </button>
+        <button
+          className={recencyGlow ? "active" : ""}
+          title="Emphasize recently modified nodes without changing their tag colors"
+          onClick={() =>
+            onView({ ...document.view, recency_glow: !recencyGlow })
+          }
+        >
+          Recency glow {recencyGlow ? "on" : "off"}
+        </button>
+        <button
+          className={liveExpand ? "active" : ""}
+          title="Reveal nodes added or modified outside NOVA"
+          onClick={() =>
+            onView({ ...document.view, live_expand: !liveExpand })
+          }
+        >
+          Live {liveExpand ? "on" : "off"}
         </button>
         <button onClick={onShowAll}>Show all nodes</button>
         <button
@@ -1687,20 +1734,33 @@ export function App() {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       pendingSave.current = undefined;
       const incoming = result.data as MapDocument;
+      const live = documentRef.current.view.live_expand ?? false;
+      const reconciled = live
+        ? expandExternalChanges(documentRef.current, incoming)
+        : { document: incoming, changedIds: [] };
+      const next = reconciled.document;
       const currentWorkspace = JSON.stringify(
         documentRef.current.view.workspace,
       );
-      documentRef.current = incoming;
-      setDocument(incoming);
-      if (JSON.stringify(incoming.view.workspace) !== currentWorkspace)
-        setDockModel(ensureGraph(workspaceModel(incoming.view.workspace)));
+      documentRef.current = next;
+      setDocument(next);
+      if (JSON.stringify(next.view.workspace) !== currentWorkspace)
+        setDockModel(ensureGraph(workspaceModel(next.view.workspace)));
+      if (live && reconciled.changedIds.length)
+        scheduleSave(next, undefined, true);
       record(
-        result.source === "assistant"
-          ? "AI Assistant updated the project file"
-          : "External change loaded from project file",
+        `${
+          result.source === "assistant"
+            ? "AI Assistant updated the project file"
+            : "External change loaded from project file"
+        }${
+          live && reconciled.changedIds.length
+            ? ` · Live revealed ${reconciled.changedIds.length} changed ${reconciled.changedIds.length === 1 ? "node" : "nodes"}`
+            : ""
+        }`,
       );
     });
-  }, [load, record]);
+  }, [load, record, scheduleSave]);
   const panelIsVisible = useCallback(
     (panel: PanelId) => {
       const node = dockModel.getNodeById(`panel-${panel}`);

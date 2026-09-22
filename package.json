@@ -11,12 +11,14 @@
     "dev:electron": "npm exec -- wait-on tcp:5173 && set ELECTRON_RUN_AS_NODE=&& set \"VITE_DEV_SERVER_URL=http://127.0.0.1:5173\"&& node_modules\\.bin\\electron.cmd .",
     "typecheck": "npm exec -- tsc --noEmit -p tsconfig.main.json && npm exec -- tsc --noEmit -p tsconfig.preload.json && npm exec -- tsc --noEmit -p tsconfig.renderer.json",
     "build:electron": "npm exec -- tsc -p tsconfig.main.json && npm exec -- tsc -p tsconfig.preload.json",
+    "build:cli": "node scripts/build-cli.mjs",
     "copy:agents": "copy /Y AGENTS.md dist\\AGENTS.md",
     "build": "npm run typecheck && npm exec -- vite build && npm run copy:agents && npm run build:electron",
     "test": "npm exec -- tsx --test src/renderer/model.test.ts src/test/assistantPolicy.test.ts src/test/assistantProtocol.test.ts src/test/assistantRecovery.test.ts src/test/project.test.ts",
+    "test:packaged-cli": "node scripts/test-packaged-cli.mjs",
     "cli": "npm exec -- tsx src/main/cli-entry.ts",
     "start": "set ELECTRON_RUN_AS_NODE=&& node_modules\\.bin\\electron.cmd .",
-    "package": "npm run build && npm exec -- electron-builder --win"
+    "package": "npm run build && npm run build:cli && npm exec -- electron-builder --win"
   },
   "dependencies": {
     "d3-force": "^3.0.0",
@@ -36,6 +38,8 @@
     "cross-env": "^10.1.0",
     "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
@@ -49,6 +53,12 @@
       "dist/**",
       "dist-electron/**",
       "package.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "out/cli/NOVA-CLI.exe",
+        "to": "NOVA-CLI.exe"
+      }
     ],
     "win": {
       "target": "nsis",

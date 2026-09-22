@@ -10,8 +10,6 @@ const PANELS = ["graph", "inspector", "outline", "search", "activity", "assistan
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 let currentMapPath: string | undefined; let primaryWindow: BrowserWindow | undefined; let aboutWindow: BrowserWindow | undefined; let mapWatcher: FSWatcher | undefined; let watchTimer: NodeJS.Timeout | undefined; let lastSerialized = "";
 
-app.setName("NOVA");
-
 function serialized(value: JsonObject): string { return JSON.stringify(value); }
 function settingsPath(): string { return path.join(app.getPath("userData"), "settings.json"); }
 function settingsCandidates(): string[] { const appData = app.getPath("appData"); return [...new Set([settingsPath(), path.join(appData, "mindmap-electron", "settings.json"), path.join(appData, "Project Knowledge Map", "settings.json")])]; }
@@ -81,5 +79,22 @@ function createMenu(): void {
 }
 
 const cliIndex = process.argv.indexOf("cli");
-if (cliIndex >= 0) app.whenReady().then(async () => { const code = await runCli(process.argv.slice(cliIndex + 1)); app.exit(code); });
-else { app.whenReady().then(() => { nativeTheme.themeSource = "dark"; if (process.platform === "win32") app.setAppUserModelId("com.philippraven.nova"); createSplashWindow((splash, shownAt) => { registerIpc(); createMenu(); createMainWindow(splash, shownAt); }); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); }); app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => mapWatcher?.close()); }
+function exitCli(code: number): void {
+  let streams = 2;
+  const flushed = () => {
+    streams -= 1;
+    if (streams === 0) process.exit(code);
+  };
+  process.stdout.write("", flushed);
+  process.stderr.write("", flushed);
+}
+
+if (cliIndex >= 0) {
+  void runCli(process.argv.slice(cliIndex + 1)).then(exitCli, (error) => {
+    process.stderr.write(`${JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }, null, 2)}\n`);
+    exitCli(1);
+  });
+} else {
+  app.setName("NOVA");
+  app.whenReady().then(() => { nativeTheme.themeSource = "dark"; if (process.platform === "win32") app.setAppUserModelId("com.philippraven.nova"); createSplashWindow((splash, shownAt) => { registerIpc(); createMenu(); createMainWindow(splash, shownAt); }); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); }); app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => mapWatcher?.close());
+}

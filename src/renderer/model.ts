@@ -33,6 +33,8 @@ export interface MapDocument {
     tag_filter_tags: string[];
     layout_mode?: "hierarchy" | "relations";
     layout_compact?: boolean;
+    recency_glow?: boolean;
+    live_expand?: boolean;
     workspace?: unknown;
   };
 }
@@ -48,6 +50,56 @@ export interface PositionedCircle {
 
 export function nowIso(): string {
   return new Date().toISOString();
+}
+
+export function recencyIntensity(
+  modifiedAt: string,
+  oldestModifiedAt: number,
+  newestModifiedAt: number,
+): number {
+  if (newestModifiedAt <= oldestModifiedAt) return 1;
+  const modified = Date.parse(modifiedAt);
+  if (!Number.isFinite(modified)) return 0;
+  const ageSeconds = Math.max(0, newestModifiedAt - modified) / 1_000;
+  const rangeSeconds = (newestModifiedAt - oldestModifiedAt) / 1_000;
+  return Math.max(
+    0,
+    Math.min(1, 1 - Math.log1p(ageSeconds) / Math.log1p(rangeSeconds)),
+  );
+}
+
+export function expandExternalChanges(
+  current: MapDocument,
+  incoming: MapDocument,
+): { document: MapDocument; changedIds: string[] } {
+  const currentById = new Map(
+    flatten(current.nodes).map((node) => [node.id, node]),
+  );
+  const incomingNodes = flatten(incoming.nodes);
+  const incomingById = new Map(incomingNodes.map((node) => [node.id, node]));
+  const changedIds = incomingNodes
+    .filter((node) => {
+      const previous = currentById.get(node.id);
+      return !previous || previous.modified_at !== node.modified_at;
+    })
+    .map((node) => node.id);
+  if (!changedIds.length) return { document: incoming, changedIds };
+
+  const expanded = new Set(incoming.view.expanded);
+  for (const changedId of changedIds) {
+    let parentId = incomingById.get(changedId)?.parentId;
+    while (parentId) {
+      expanded.add(parentId);
+      parentId = incomingById.get(parentId)?.parentId;
+    }
+  }
+  return {
+    document: {
+      ...incoming,
+      view: { ...incoming.view, expanded: [...expanded] },
+    },
+    changedIds,
+  };
 }
 
 export function nodePassesTagFilter(
@@ -274,6 +326,8 @@ export function emptyMap(): MapDocument {
       tag_filter_tags: [],
       layout_mode: "hierarchy",
       layout_compact: false,
+      recency_glow: false,
+      live_expand: false,
     },
   };
 }

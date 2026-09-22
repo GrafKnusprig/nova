@@ -120,10 +120,10 @@
                         "user"
                       ],
                       "main_tag": "tool-development",
-                      "summary": "Viewer 7.1.0 provides a headless JSON-in/JSON-out project CLI for init, validate, collision-checked UUID generation, list, get, node create/update/move/delete, semantic link add/remove, and deterministic maintenance of the project-specific LLM context, instructions, and tag definitions. GUI and CLI operations share schema validation, node traversal, protected-root rules, timestamp handling, link and view cleanup, atomic file replacement, and stale-revision detection. Text fields can also be supplied from files, and AGENTS.md documents the executable and development command forms for external AI agents.",
-                      "rationale": "Deterministic structural operations keep schema mechanics out of agent prompts, prevent routine format corruption, and let external AI focus on semantic classification, content, hierarchy, and relationships.",
+                      "summary": "Viewer 8.0.1 packages a genuinely headless NOVA-CLI.exe automation sidecar as a Node single-executable application. It supports init, validate, collision-checked UUID generation, list, get, node create/update/move/delete, semantic links, and deterministic LLM-context, instruction, and tag-definition maintenance without initializing Electron, Chromium, Crashpad, Mojo IPC, windows, settings, or watchers; it is also unaffected by ELECTRON_RUN_AS_NODE. NOVA.exe cli remains a compatibility path and now executes before app.whenReady when Electron mode is available. GUI and CLI operations share schema validation, protected-root rules, timestamps, cleanup, atomic replacement, and stale-revision detection. A packaged Windows smoke test creates and validates a temporary project, requires clean JSON and stderr, enforces a timeout, and checks for leftover executable processes.",
+                      "rationale": "External agents need a deterministic CLI that exits cleanly in restricted automation environments without dialogs or orphaned Electron processes, while retaining a compatibility command for ordinary desktop shells.",
                       "created_at": "2026-09-17T08:10:37.458Z",
-                      "modified_at": "2026-09-17T08:10:37.458Z",
+                      "modified_at": "2026-09-22T11:00:08.287Z",
                       "children": [],
                       "links": [
                         {
@@ -198,10 +198,10 @@
                         "user"
                       ],
                       "main_tag": "implementation",
-                      "summary": "NOVA 8.0.1 has been freshly packaged as the Windows x64 NSIS installer dist/NOVA-8.0.1-x64.exe (216,046,678 bytes; SHA-256 4113ED3C6C9787E05D4B2A20092401FE596D02C72BBD54BD924FC8704DDC5361) with a corresponding blockmap and unpacked application. The README points users to GitHub's latest-release URL for the pre-built installer. Publishing tag v8.0.1 and attaching the installer as a GitHub Release remain pending until authenticated GitHub release-management access is connected.",
+                      "summary": "NOVA 8.0.1 has been freshly packaged as the Windows x64 NSIS installer dist/NOVA-8.0.1-x64.exe (216,046,678 bytes; SHA-256 4113ED3C6C9787E05D4B2A20092401FE596D02C72BBD54BD924FC8704DDC5361) with a corresponding blockmap and unpacked application. Authenticode inspection reports NotSigned, so release documentation must disclose that Windows SmartScreen may warn. The README points users to GitHub's latest-release URL for the pre-built installer. Publishing tag v8.0.1 and attaching the installer as a GitHub Release remain pending manual upload by the user.",
                       "rationale": "The user wants non-developers to obtain a complete pre-built Windows installer directly from the repository's GitHub Releases page while retaining self-build instructions for developers.",
                       "created_at": "2026-09-21T14:04:33.937Z",
-                      "modified_at": "2026-09-21T14:04:33.937Z",
+                      "modified_at": "2026-09-21T14:28:13.055Z",
                       "children": [],
                       "links": []
                     }
@@ -305,7 +305,7 @@
               "summary": "The Electron graph keeps bubbles title-focused and never renders note content inside them. Bubble radius reflects text volume, direct children, and incoming/outgoing references. Responsive labels remain inside the circle and are non-selectable. Single-left-click selects one node for the Inspector, double-left-click toggles children, triple-left-click opens Node Property, and left-drag pans at cursor speed independently of zoom. Right-click/right-drag manages additive multi-selection, group movement, and marquee selection, with the Inspector-active member visually distinct. Deterministic main-tag colors make roots brightest and descendants progressively darker. Hover shows complete content in an unscrolled transient tooltip. Startup fits visible nodes, and re-layout combines collision forces with strong short parent-child springs and weaker long semantic-link springs.",
               "rationale": "A dense map must remain readable when zoomed out while allowing users to access richer context naturally as they approach a node.",
               "created_at": "2026-09-15T14:47:10.222Z",
-              "modified_at": "2026-09-17T13:20:39.939Z",
+              "modified_at": "2026-09-22T06:57:05.686Z",
               "children": [
                 {
                   "id": "information-weighted-node-bubbles",
@@ -351,10 +351,10 @@
                     "user"
                   ],
                   "main_tag": "tool-development",
-                  "summary": "Each node's first, explicitly selectable main tag is hashed to a stable pastel hue without requiring a manually maintained palette. Bubble fill, outline, and glow share that hue. Root nodes begin at high lightness and descendants darken by nine percentage points per level up to a 34-point reduction, producing strong visual hierarchy contrast.",
-                  "rationale": "Main-tag color provides immediate visual grouping, and depth-based darkening keeps root concepts prominent while communicating hierarchy without additional labels or shapes.",
+                  "summary": "Each node's explicitly selectable main tag is hashed to a stable hue, so category identity does not require a manually maintained palette. The optional persisted Recency glow graph toggle keeps those hues while mapping modification time to fill brightness, opacity, outline strength, and glow. Its logarithmic age curve gives the newest nodes the brightest, strongest glow; separates edits made minutes apart from edits made hours apart; and compresses older history toward a dark, faded endpoint. With the toggle off, the established depth-based palette remains unchanged.",
+                  "rationale": "Main-tag hue provides immediate category grouping, while an optional recency overlay makes the latest work visually obvious without hiding same-day timing differences or replacing the normal hierarchy-oriented coloring.",
                   "created_at": "2026-09-15T00:00:00.000Z",
-                  "modified_at": "2026-09-15T00:00:00.000Z",
+                  "modified_at": "2026-09-22T06:52:05.302Z",
                   "children": [],
                   "links": []
                 },
@@ -428,6 +428,29 @@
                   "modified_at": "2026-09-18T07:38:46.541Z",
                   "children": [],
                   "links": []
+                },
+                {
+                  "id": "00058132-4ac7-4108-aaae-f402a6f4153a",
+                  "title": "Live external-change disclosure",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "evaluation-validation",
+                    "active",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The Graph panel has a persisted Live toggle, off by default. When enabled, each validated filesystem or integrated-assistant project reload compares incoming nodes with the current document by stable ID and modified_at. New nodes and timestamp-modified nodes cause every ancestor in their incoming hierarchy to be added to view.expanded, making changed branches render immediately while leaving unrelated disclosure untouched. The resulting expansion state is saved back without generating a watcher echo. Tag filters remain authoritative.",
+                  "rationale": "The user wants the visible graph to grow naturally during external work so newly added or modified knowledge appears without manually finding and expanding every parent.",
+                  "created_at": "2026-09-22T06:57:05.684Z",
+                  "modified_at": "2026-09-22T06:57:18.682Z",
+                  "children": [],
+                  "links": [
+                    {
+                      "target": "electron-core-viewer-implementation",
+                      "relation": "depends-on"
+                    }
+                  ]
                 }
               ],
               "links": [
@@ -821,7 +844,7 @@
               "summary": "The assistant receives read, search, create, update, delete, and link tools bound internally to the active project path, with IDs and timestamps generated by application helpers. It never receives a shell, arbitrary path, generic filesystem write, or direct JSON overwrite tool. Every mutation is revalidated, saved atomically, recorded in Activity, and broadcast to the renderer because application-owned writes are intentionally suppressed by the external-file watcher.",
               "rationale": "Enforcing scope in application code is more reliable than asking a model prompt to avoid unrelated files and preserves conflict handling for every open node editor.",
               "created_at": "2026-09-16T11:28:52.302Z",
-              "modified_at": "2026-09-17T11:08:05.091Z",
+              "modified_at": "2026-09-22T08:55:04.786Z",
               "children": [
                 {
                   "id": "5a3e1328-dcf2-4fec-9122-8b0985761b5a",
@@ -838,6 +861,24 @@
                   "rationale": "A mistaken model tool call should be correctable within the conversation rather than aborting the user's request, and users should be able to name tags naturally without knowing storage syntax.",
                   "created_at": "2026-09-17T11:08:05.089Z",
                   "modified_at": "2026-09-17T11:08:05.089Z",
+                  "children": [],
+                  "links": []
+                },
+                {
+                  "id": "dfa77955-1860-427d-9d32-a94f4bb56607",
+                  "title": "Adaptive assistant tool-loop safety",
+                  "tags": [
+                    "tool-development",
+                    "implementation",
+                    "evaluation-validation",
+                    "resolved",
+                    "user"
+                  ],
+                  "main_tag": "tool-development",
+                  "summary": "The OpenAI Responses and FhGenie Chat Completions adapters allow up to 24 consecutive tool rounds, replacing the former blunt 10-round cutoff. A provider-neutral guard fingerprints calls with canonicalized JSON arguments, permits long sequences of distinct reads and edits, detects a tool round or short multi-round pattern repeated three times, and records successful mutation fingerprints so an identical create, update, link, or delete request cannot execute twice. Safety stops return ordinary plain-language chat replies that distinguish repetition from an unusually long task and state whether partial changes were saved; they no longer surface an Electron remote-method error. The assistant prompt also asks models to batch compatible operations, avoid repeated successful mutations, and finish promptly.",
+                  "rationale": "Legitimate tasks such as researching suitable topics, creating a TODO, receiving its generated ID, and then linking it may require more than ten tool rounds, while true loops and duplicate mutations still need targeted protection and understandable recovery guidance.",
+                  "created_at": "2026-09-22T08:55:04.783Z",
+                  "modified_at": "2026-09-22T08:55:04.783Z",
                   "children": [],
                   "links": []
                 }
@@ -1053,10 +1094,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "The distributed AGENTS.md is a compact, deployment-portable schema-7 guide limited to mind-map creation, semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. It contains no application source paths, Node.js/npm workflow, release engineering, UI implementation, or performance-development instructions. Deterministic project creation and structural correctness belong to the packaged executable's validator and CLI.",
+          "summary": "The distributed AGENTS.md is a compact, deployment-portable schema-7 guide limited to mind-map creation, semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. Its Project CLI section directs automation to the headless NOVA-CLI.exe sidecar, explicitly notes that it avoids Electron and Chromium and remains usable with ELECTRON_RUN_AS_NODE, and gives npm.cmd run cli as the source-checkout fallback. It contains no application source paths, release engineering, UI implementation, or performance-development instructions. Deterministic project creation and structural correctness belong to the packaged validator and CLI.",
           "rationale": "A project-maintenance AI needs the storage model and research semantics but not application-development context; removing that material reduces prompt cost and prevents unusable source commands in executable-only deployments.",
           "created_at": "2026-09-11T00:00:00.000Z",
-          "modified_at": "2026-09-17T10:56:07.541Z",
+          "modified_at": "2026-09-22T11:02:42.589Z",
           "children": [],
           "links": [
             {
@@ -1095,10 +1136,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "NOVA release 8.0.1 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, and repository-default nova.json project. nova.json is a conventional default rather than a required filename; every project path accepted from the user or CLI remains supported. The product is named NOVA (Networked Organization & Visualization Assistant), while schema 7 remains format-compatible. Portable project instructions describe schema 7 and invoke NOVA.exe without coupling external users to source-tree paths or a fixed project filename. The untouched Python viewer remains a legacy schema-4 tool and is not an authority for or writer of schema 7.",
+          "summary": "NOVA release 8.0.1 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, repository-default nova.json project, README, and portable AGENTS.md instructions. nova.json is a conventional default rather than a required filename; every explicit project path remains supported. The packaged instructions direct external agents to the standalone NOVA-CLI.exe headless sidecar and retain npm.cmd run cli only as a source-checkout fallback. The product remains NOVA (Networked Organization & Visualization Assistant), while schema 7 remains format-compatible. The untouched Python viewer remains a legacy schema-4 tool and is not an authority for or writer of schema 7.",
           "rationale": "The viewer, canonical map format, and maintenance instructions must evolve together so UI or data changes do not silently make the documented contract inaccurate.",
           "created_at": "2026-09-15T14:47:10.222Z",
-          "modified_at": "2026-09-21T13:02:57.383Z",
+          "modified_at": "2026-09-22T11:02:42.741Z",
           "children": [
             {
               "id": "mindmap-versioning-rules",
@@ -1365,6 +1406,7 @@
       "electron-knowledge-map-rebuild-plan",
       "electron-project-directory",
       "electron-portable-distribution-and-cli-plan",
+      "5fc645a2-1e09-4b62-b984-5eff5c95fd6a",
       "electron-core-viewer-implementation",
       "semantic-zoom-graph-rendering",
       "knowledge-map-layout-and-dragging",
@@ -1388,262 +1430,270 @@
         400
       ],
       "electron-knowledge-map-rebuild-plan": [
-        291.38043007680193,
-        -82.97710698074012
+        -100.17759475834528,
+        248.48036356165747
       ],
       "knowledge-map-navigation": [
-        893.1435786714692,
-        225.5081602689435
+        906.6730097288879,
+        199.07799639023398
       ],
       "knowledge-map-editing": [
-        816.2637950134272,
-        387.2161126380287
+        938.5116208285608,
+        474.20890450671106
       ],
       "knowledge-map-save-safety": [
-        383.50537200691076,
-        325.1034729077129
+        397.7276663555851,
+        107.24737032425931
       ],
       "knowledge-map-viewer-smoke-test": [
-        762.8571630007737,
-        532.3681743561656
+        776.2201179361728,
+        683.9653032024347
       ],
       "knowledge-map-rationale-editor": [
-        327.3768907211041,
-        485.98142441213594
+        426.9779112944587,
+        275.20569276112616
       ],
       "knowledge-map-work-categories": [
-        710.4068561280507,
-        208.6008764623358
+        818.277245518517,
+        359.9800563776707
       ],
       "knowledge-map-edge-label-layout": [
-        812.8120650771009,
-        677.4136932824421
+        641.245469648693,
+        611.0819915925088
       ],
       "item-reference-granularity": [
-        509.0413176746138,
-        199.98154850194575
+        725.3969711344255,
+        218.6708057274106
       ],
       "knowledge-map-layout-and-dragging": [
-        480.0543357720156,
-        1421.9052350285235
+        761.32506532794,
+        1285.7762203599345
       ],
       "knowledge-map-weighted-view": [
-        466.27975537267594,
-        590.5033634767022
+        361.4751287760875,
+        436.14513593660064
       ],
       "local-knowledge-map-assistant": [
-        975.1379428066258,
-        1067.9251029187565
+        113.64456098011715,
+        -292.4611944080276
       ],
       "embedding-note-intake-workflow": [
-        920.5023151403402,
-        515.6588100785136
+        781.2173660213539,
+        525.5654973895687
       ],
       "knowledge-map-startup-and-navigation": [
-        347.0872056404432,
-        150.19944104831777
+        559.9587131447282,
+        181.92208459190377
       ],
       "knowledge-map-project-creation": [
-        690.2278744429974,
-        -728.4305352881815
+        1197.9131099647382,
+        -227.3435318644358
       ],
       "canonical-mindmap-template": [
-        644.9987042525383,
-        647.7054338689003
+        472.50114178870564,
+        587.4255511949515
       ],
       "knowledge-map-item-explosion": [
-        615.1329991449477,
-        52.53879086018001
+        679.0782897607768,
+        42.9675489929443
       ],
       "mindmap-version-contract": [
-        754.7948163535609,
-        -366.85509225780214
+        1157.5085877090855,
+        841.0360069363132
       ],
       "electron-project-directory": [
-        -120.10225754855786,
-        27.482293188293664
+        234.1956547542745,
+        585.6477013089365
       ],
       "electron-run-as-node-startup-fix": [
-        -326.0001688330501,
-        -47.58486966623674
+        25.0650268830978,
+        545.0044760792044
       ],
       "electron-dev-server-url-fix": [
-        -317.54333769241225,
-        116.65175839448663
+        64.3788229973032,
+        704.6904598663303
       ],
       "electron-portable-distribution-and-cli-plan": [
-        1131.8294981750278,
-        -169.96303683067143
+        1251.1489557293035,
+        342.89924946337226
       ],
       "project-cli-implementation": [
-        1318.7249820407048,
-        -58.8066249385502
+        1465.05376620505,
+        360.0746422374317
       ],
       "5fc645a2-1e09-4b62-b984-5eff5c95fd6a": [
-        1281.7261773936455,
-        -342.75513591485645
+        2119.174976772983,
+        -81.42111299754596
       ],
       "f067182a-2297-46cc-8ebc-f1904363eb05": [
-        1395.966270164173,
-        -217.56741185112259
+        1370.6482593818262,
+        509.26696235291814
       ],
       "electron-dockable-workspace": [
-        83.18964864456302,
-        -66.47951483765989
+        -313.7116257732676,
+        244.26870279230573
       ],
       "electron-core-viewer-implementation": [
-        1077.6273814612362,
-        -736.9803041680665
+        620.0782999329681,
+        -266.7122789872774
       ],
       "08399b46-166a-4afc-8436-529f56b351f1": [
-        1229.0790692928254,
-        -909.9464974020274
+        696.1053505943199,
+        -469.60890407533213
       ],
       "semantic-zoom-graph-rendering": [
-        161.30735042350415,
-        972.5651445025576
+        -111.15318548469706,
+        1206.4451582339677
       ],
       "information-weighted-node-bubbles": [
-        32.565065214636746,
-        806.2135175400218
+        -169.78021711551298,
+        1004.4324781008328
       ],
       "graph-multiselect-and-group-drag": [
-        380.5018443970985,
-        962.3832535304701
+        105.44058540024096,
+        1271.2975339298764
       ],
       "automatic-category-color-palette": [
-        -50.428533498275414,
-        957.5108051606715
+        -297.9557837413987,
+        1119.9740876318897
       ],
       "node-hover-content-tooltip": [
-        146.93755407037716,
-        1213.9964551813266
+        -202.92266219726926,
+        1427.3745243903147
       ],
       "tag-centric-electron-node-editing": [
-        -14.510408502222164,
-        1131.3355931203848
+        -327.00336489693643,
+        1295.0787575159309
       ],
       "electron-guid-node-identity": [
-        285.1701158069557,
-        801.0606059356569
+        72.41391124101287,
+        1086.8461972539794
       ],
       "hierarchy-weighted-electron-relayout": [
-        320.24209808517287,
-        1148.0172791529192
+        -17.538106457118747,
+        1422.847154309236
       ],
       "electron-local-application-boundary": [
-        283.4952603383284,
-        -297.5312203384077
+        -85.26828486234292,
+        34.29961343778451
       ],
       "tkinter-viewer-retirement-plan": [
-        107.96646472270062,
-        -236.0750260768547
+        -265.6020441298143,
+        79.76341390263302
       ],
       "large-map-performance-optimization": [
-        432.62667052055144,
-        1643.0741408294912
+        738.7163019059047,
+        1495.5134741107177
       ],
       "large-map-performance-benchmark": [
-        414.61760932434487,
-        1823.0574780960103
+        883.337895018125,
+        1604.154730878036
       ],
       "assistant-provider-and-credential-boundary": [
-        -33.06337305363078,
-        1465.1815982562662
+        -636.5930220793398,
+        66.09896435419535
       ],
       "fhgenie-api-web-model-catalog-gap": [
-        -245.42412458171546,
-        1525.222464766926
+        -824.9747451018904,
+        117.5777577170339
       ],
       "fhgenie-web-search-api-gap": [
-        -288.93158285347164,
-        2013.0681979719022
+        -816.4698669445916,
+        743.430702858205
       ],
       "assistant-owned-web-search-layer": [
-        -463.46534647682796,
-        2075.5926758322594
+        -959.8812879349584,
+        864.4394957279823
       ],
       "assistant-project-scoped-tools": [
-        1651.0041986424574,
-        468.268633573041
+        116.87864535126613,
+        -535.3906511398146
       ],
       "5a3e1328-dcf2-4fec-9122-8b0985761b5a": [
-        1846.9242411385007,
-        381.1040997899475
+        -35.26501105442369,
+        -428.8083825599846
       ],
       "assistant-capability-modes": [
-        1182.156529134315,
-        998.2883362770444
+        287.68746592297566,
+        -437.9506097452063
       ],
       "assistant-chat-input-availability": [
-        1016.0409219653561,
-        1266.7329377230524
+        -56.670890534198314,
+        -604.4121393620334
       ],
       "assistant-new-chat-context-reset": [
-        1174.0687103677344,
-        1185.632279632299
+        -92.67777592273858,
+        -261.84143645293324
       ],
       "assistant-fhgenie-provider-support": [
-        886.9648914131645,
-        1771.7733215167686
+        330.25944425028905,
+        762.2126002998989
       ],
       "fhgenie-default-mindmap-model": [
-        913.9493699137995,
-        1965.2990372902434
+        403.5485404247585,
+        962.8658530068534
       ],
       "project-root-node-schema-design": [
-        710.7418235788354,
-        -961.8954534286939
+        1337.4475559810196,
+        -371.72291131501487
       ],
       "mindmap-versioning-rules": [
-        654.4121350774815,
-        -551.1292061490624
+        959.4497703823941,
+        847.9349382203611
       ],
       "mindmap-newer-schema-rejection": [
-        558.5178721709776,
-        -416.228057721023
+        1001.1966139057453,
+        1008.0982754326283
       ],
       "electron-live-project-schema-v5": [
-        960.7303860268041,
-        -463.85852157826946
+        1335.9615789540112,
+        979.0112883705518
       ],
       "electron-tag-filter-schema-v6": [
-        946.9109749322283,
-        -270.65300571021294
+        1169.4572181034366,
+        1077.9857908126148
       ],
       "recursive-node-schema-v3": [
-        1194.566494375112,
-        140.51243376403428
+        1768.5996715104004,
+        234.66074703234216
       ],
       "item-to-child-node-migration": [
-        1392.9226264166286,
-        227.67922588834676
+        1932.6137520290556,
+        124.53890780853872
       ],
       "recursive-node-viewer-ui": [
-        403.25050340176864,
-        -640.877963979541
+        1694.8521262626166,
+        -595.6996679373445
       ],
       "collapsed-relation-bubbling": [
-        334.106575700517,
-        -849.534080206548
+        1802.6200320903304,
+        -762.3475700846558
       ],
       "global-hierarchy-visibility-controls": [
-        202.7871216399413,
-        -741.4383454262128
+        1634.6352423249953,
+        -789.0046010472622
       ],
       "persistent-hierarchy-view-state": [
-        1272.5996657381472,
-        345.97170798427857
+        1972.1438929499013,
+        288.5757760534472
       ],
       "llm-context-schema-v4": [
-        822.0295287134891,
-        -590.6855290038601
+        1360.957406968517,
+        792.7383680551568
+      ],
+      "1fddf6fd-0c6d-4e1a-8248-639b05ffdf34": [
+        2321.1008064226553,
+        -172.2905947206443
+      ],
+      "e869ce32-03ae-4d79-9b3f-8da1317ca8bc": [
+        1399.7662294290462,
+        186.27992005660477
       ]
     },
-    "zoom": 0.29836493952825416,
+    "zoom": 0.2704729441519463,
     "viewport": [
-      77.26204734629675,
-      -73.89432448173574
+      -22.38713294077271,
+      -1.6298347787526275
     ],
     "layout_mode": "hierarchy",
     "workspace": {
@@ -1660,7 +1710,7 @@
           {
             "type": "tabset",
             "id": "graph-tabset",
-            "weight": 41.38134592680047,
+            "weight": 50.47089749324444,
             "children": [
               {
                 "type": "tab",
@@ -1674,7 +1724,7 @@
           {
             "type": "tabset",
             "id": "#dd94733a-8744-46db-a7d0-76cb177c34c1",
-            "weight": 28.618469598583236,
+            "weight": 20.980520713974965,
             "children": [
               {
                 "type": "tab",
@@ -1683,12 +1733,13 @@
                 "component": "assistant",
                 "enablePopout": true
               }
-            ]
+            ],
+            "active": true
           },
           {
             "type": "row",
             "id": "#e0359eb4-aa63-43a4-85b6-fc622c581fdc",
-            "weight": 30.000184474616294,
+            "weight": 28.548581792780592,
             "children": [
               {
                 "type": "tabset",
@@ -1731,8 +1782,7 @@
                     "component": "activity",
                     "enablePopout": true
                   }
-                ],
-                "active": true
+                ]
               }
             ]
           }

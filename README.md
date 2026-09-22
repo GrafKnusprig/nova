@@ -154,12 +154,12 @@ The packaged installer is written to `dist/NOVA-<version>-x64.exe`.
 Keep [`AGENTS.md`](AGENTS.md) next to the project file so a compatible IDE agent can discover the schema and maintenance policy. Every CLI command operates on the explicit path you provide—the project filename is yours to choose.
 
 ```powershell
-NOVA.exe cli validate --project .\my-research-project.json
-NOVA.exe cli list --project .\my-research-project.json
-NOVA.exe cli get --project .\my-research-project.json --id <node-id>
+NOVA-CLI.exe validate --project .\my-research-project.json
+NOVA-CLI.exe list --project .\my-research-project.json
+NOVA-CLI.exe get --project .\my-research-project.json --id <node-id>
 ```
 
-The CLI also supports project creation, node creation and updates, moves, deletion, semantic links, LLM context, project instructions, and custom tag definitions. Every operation validates before and after mutation and emits machine-readable JSON.
+`NOVA-CLI.exe` is the installer's headless automation sidecar: it does not initialize Electron or Chromium and remains independent of `ELECTRON_RUN_AS_NODE`. `NOVA.exe cli ...` remains available for compatibility in normal desktop environments. The CLI also supports project creation, node creation and updates, moves, deletion, semantic links, LLM context, project instructions, and custom tag definitions. Every operation validates before and after mutation and emits machine-readable JSON.
 
 ## The short version
 

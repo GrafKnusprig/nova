@@ -5,7 +5,8 @@ import { addLlmInstruction, changeProjectLink, children, createProjectFile, crea
 type Options = Record<string, string | boolean>;
 const HELP = `NOVA CLI ${VIEWER_VERSION}
 
-Usage: NOVA.exe cli <command> --project <project-file.json> [options]
+Usage: NOVA-CLI.exe <command> --project <project-file.json> [options]
+       NOVA.exe cli <command> --project <project-file.json> [options]
 
 Commands:
   init         Create a new schema-7 project file. Options: --name, --summary, --summary-file

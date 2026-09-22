@@ -7,6 +7,7 @@ import {
   createNode,
   descendantIds,
   emptyMap,
+  expandExternalChanges,
   flatten,
   guidId,
   insertNode,
@@ -16,6 +17,7 @@ import {
   outlineCollapsedNodeIds,
   outlineVisibleNodes,
   projectRoot,
+  recencyIntensity,
   removeNode,
   tagButtonSelected,
   updateNode,
@@ -35,6 +37,64 @@ const node = (id: string, children: MapNode[] = []): MapNode => ({
   modified_at: "2026-01-01T00:00:00.000Z",
   children,
   links: [],
+});
+
+test("recency intensity expands recent differences and anchors both extremes", () => {
+  const newest = Date.parse("2026-09-22T12:00:00.000Z");
+  const oldest = Date.parse("2026-08-22T12:00:00.000Z");
+  const oneMinuteAgo = recencyIntensity(
+    "2026-09-22T11:59:00.000Z",
+    oldest,
+    newest,
+  );
+  const fourHoursAgo = recencyIntensity(
+    "2026-09-22T08:00:00.000Z",
+    oldest,
+    newest,
+  );
+  const oneDayAgo = recencyIntensity(
+    "2026-09-21T12:00:00.000Z",
+    oldest,
+    newest,
+  );
+
+  assert.equal(recencyIntensity(new Date(newest).toISOString(), oldest, newest), 1);
+  assert.equal(recencyIntensity(new Date(oldest).toISOString(), oldest, newest), 0);
+  assert.ok(oneMinuteAgo > fourHoursAgo);
+  assert.ok(fourHoursAgo > oneDayAgo);
+  assert.ok(oneMinuteAgo - fourHoursAgo > fourHoursAgo - oneDayAgo);
+  assert.equal(recencyIntensity("invalid", oldest, newest), 0);
+  assert.equal(recencyIntensity(new Date(newest).toISOString(), newest, newest), 1);
+});
+
+test("external changes expand ancestor paths for added and modified nodes", () => {
+  const current = emptyMap();
+  const root = current.nodes[0];
+  const topic = node("topic", [node("branch", [node("existing")])]);
+  current.nodes = [{ ...root, children: [topic] }];
+  current.view.expanded = [root.id];
+
+  const incoming = structuredClone(current);
+  incoming.nodes[0].children[0].children[0].children[0].modified_at =
+    "2026-01-02T00:00:00.000Z";
+  incoming.nodes[0].children[0].children[0].children.push(node("added"));
+  const result = expandExternalChanges(current, incoming);
+
+  assert.deepEqual(result.changedIds, ["existing", "added"]);
+  assert.deepEqual(new Set(result.document.view.expanded), new Set([
+    root.id,
+    "topic",
+    "branch",
+  ]));
+  assert.deepEqual(current.view.expanded, [root.id]);
+});
+
+test("external changes leave disclosure unchanged when no nodes changed", () => {
+  const current = emptyMap();
+  const incoming = structuredClone(current);
+  const result = expandExternalChanges(current, incoming);
+  assert.equal(result.document, incoming);
+  assert.deepEqual(result.changedIds, []);
 });
 
 test("layout modes derive communities from weighted graph topology", () => {

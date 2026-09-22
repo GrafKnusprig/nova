@@ -132,10 +132,13 @@ with `supersedes`.
 
 ## Project CLI
 
-Use the packaged executable's `cli` mode instead of editing recursive JSON. On
-Windows PowerShell, a typical invocation is
-`& ".\NOVA.exe" cli`; use the actual filename supplied with the
-release.
+Use the packaged headless CLI instead of editing recursive JSON. On Windows
+PowerShell, invoke `& ".\NOVA-CLI.exe" <command> --project <project-file.json>`;
+use the actual sidecar path supplied with the release. `NOVA-CLI.exe` does not
+start Electron or Chromium and remains usable when `ELECTRON_RUN_AS_NODE` is
+set by an automation environment. In a source checkout where the packaged
+sidecar is unavailable, use
+`npm.cmd run cli -- <command> --project <project-file.json>`.
 
 Every command requires `--project <project-file.json>`, emits JSON, and returns a
 nonzero exit code with a JSON error on failure.
