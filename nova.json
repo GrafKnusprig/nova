@@ -1,6 +1,6 @@
 {
   "version": 7,
-  "viewer_version": "8.1.0",
+  "viewer_version": "8.3.2",
   "project": {
     "root_node_id": "knowledge-map-viewer"
   },
@@ -120,10 +120,10 @@
                         "user"
                       ],
                       "main_tag": "tool-development",
-                      "summary": "Viewer 8.1.0 packages the genuinely headless NOVA-CLI.exe automation sidecar as a Node single-executable application and installs it beside NOVA.exe. The per-user NOVA_CLI environment variable exposes its absolute path to agent and terminal processes started after installation; uninstall removes the variable only when it still points to that installation. The CLI supports init, validate, collision-checked UUID generation, list, get, node create/update/move/delete, semantic links, and deterministic LLM-context, instruction, and tag-definition maintenance without initializing Electron or Chromium and remains unaffected by ELECTRON_RUN_AS_NODE. NOVA.exe cli remains a compatibility path. GUI and CLI operations share schema validation, protected-root rules, timestamps, cleanup, atomic replacement, and stale-revision detection. The packaged Windows smoke test verifies clean JSON, clean exit, and no leftover executable processes.",
+                      "summary": "Viewer 8.3.0 packages the genuinely headless NOVA-CLI.exe automation sidecar beside NOVA.exe and exposes its absolute path through the per-user NOVA_CLI environment variable. Its init command creates both the schema-7 project JSON and a sibling AGENTS.md from the installed canonical template, and reports both paths as JSON. The CLI supports validation, UUID generation, node and link maintenance, LLM context, instructions, and tag definitions without Electron or Chromium and remains unaffected by ELECTRON_RUN_AS_NODE. GUI and CLI operations share schema validation, protected-root rules, timestamps, cleanup, atomic replacement, and stale-revision detection. Packaged Windows smoke tests verify AGENTS initialization, clean JSON, clean exit, and no leftover processes.",
                       "rationale": "External agents need a deterministic CLI that exits cleanly in restricted automation environments without dialogs or orphaned Electron processes, while retaining a compatibility command for ordinary desktop shells.",
                       "created_at": "2026-09-17T08:10:37.458Z",
-                      "modified_at": "2026-09-24T07:13:26.631Z",
+                      "modified_at": "2026-09-24T08:06:44.737Z",
                       "children": [],
                       "links": [
                         {
@@ -181,10 +181,10 @@
                         "user"
                       ],
                       "main_tag": "implementation",
-                      "summary": "The NOVA build copies the repository-root AGENTS.md into dist/AGENTS.md after the Vite renderer build and before Electron packaging. Electron Builder packages dist/**, so the authoritative guidance file is included with the application. Hash comparison verified that the built copy matches its source.",
+                      "summary": "NOVA 8.3.0 packages the canonical repository-root AGENTS.md twice for distinct purposes: inside the renderer distribution and as an extra installed file beside NOVA.exe and NOVA-CLI.exe. New projects created through the desktop File > New flow or NOVA-CLI.exe init automatically receive a project-local AGENTS.md copied from the installed or development template. File > Init AGENTS.md in Project is disabled until a project is open and deliberately overwrites an existing project-local file, supporting legacy projects and template refresh after upgrades. Unit tests verify overwrite behavior, and the packaged CLI smoke test verifies that its initialized file exactly matches the installed template.",
                       "rationale": "AGENTS.md is essential operational guidance and must ship with NOVA.",
                       "created_at": "2026-09-21T11:47:42.620Z",
-                      "modified_at": "2026-09-21T11:47:42.620Z",
+                      "modified_at": "2026-09-24T08:06:43.656Z",
                       "children": [],
                       "links": []
                     },
@@ -198,10 +198,10 @@
                         "user"
                       ],
                       "main_tag": "implementation",
-                      "summary": "NOVA 8.1.0 has been freshly packaged as the Windows x64 NSIS installer dist/NOVA-8.1.0-x64.exe (239,530,300 bytes) with a corresponding blockmap and unpacked application. The installed payload contains NOVA-CLI.exe, and the compiled installer hook publishes its path through the per-user NOVA_CLI environment variable. A packaged-CLI smoke test passed. Release signing and GitHub publication remain separate release operations.",
+                      "summary": "NOVA 8.3.0 has been freshly packaged as the Windows x64 NSIS installer dist/NOVA-8.3.0-x64.exe (239,526,919 bytes) with a blockmap and unpacked application. The installed root contains NOVA-CLI.exe and a byte-identical canonical AGENTS.md beside NOVA.exe; the installer publishes the CLI path through the per-user NOVA_CLI environment variable. The packaged-CLI smoke test confirmed automatic project-local AGENTS.md initialization, valid JSON, clean exit, and no leftover processes. Release signing and GitHub publication remain separate release operations.",
                       "rationale": "The user wants non-developers to obtain a complete pre-built Windows installer directly from the repository's GitHub Releases page while retaining self-build instructions for developers.",
                       "created_at": "2026-09-21T14:04:33.937Z",
-                      "modified_at": "2026-09-24T07:13:31.727Z",
+                      "modified_at": "2026-09-24T08:06:51.177Z",
                       "children": [],
                       "links": []
                     }
@@ -268,10 +268,10 @@
                     "user"
                   ],
                   "main_tag": "tool-development",
-                  "summary": "NOVA release 8.1.0 provides consistent application branding. The package, executable, installer, window titles, AI-assistant identity, CLI help, and project instructions use NOVA, Networked Organization and Visualization Assistant. The supplied icon is used for application windows and the Windows executable. At startup, the frameless splash is created at the earliest Electron-ready point; application services and the main window begin loading only after the splash is visible, and the handoff keeps it visible for at least one second. About NOVA is a compact custom dark window containing the icon, full subtitle, release version, Philipp Unger attribution, and philippraven.com link; splash artwork is reserved for startup. Application and branding pages use dark compatible scrollbars. Legacy settings locations are checked once so the rename preserves the last opened project.",
+                  "summary": "NOVA release 8.3.2 provides consistent application branding across the package, executables, installer, windows, AI Assistant, CLI, project instructions, splash, and About dialog. The supplied icon is used for application windows and the Windows executable. Startup shows the frameless splash before application services and keeps it visible for at least one second. About NOVA shows the icon, full subtitle, release version, attribution, and project link. Legacy settings locations remain supported so upgrades preserve the last opened project.",
                   "rationale": "The finished standalone tool needs one coherent identity and polished dark startup/about surfaces without losing per-user continuity during the product rename.",
                   "created_at": "2026-09-18T11:00:44.762Z",
-                  "modified_at": "2026-09-24T07:14:03.818Z",
+                  "modified_at": "2026-09-24T08:22:07.565Z",
                   "children": [],
                   "links": []
                 }
@@ -749,10 +749,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "The Electron viewer includes a dockable multi-provider AI Assistant panel supporting OpenAI's Responses API and FhGenie's OpenAI-compatible Chat Completions API. It reads the applicable AGENTS.md instructions used in the project and operates only on the currently loaded project file, regardless of its filename, through narrow, validated project tools rather than unrestricted filesystem access. Electron main owns provider requests, credentials, schema validation, atomic writes, and explicit renderer update broadcasts. Provider-specific models and encrypted credentials are user-local settings; chat history remains session state rather than knowledge-map content.",
+          "summary": "Viewer 8.3.0 provides a dockable multi-provider AI Assistant supporting OpenAI Responses and FhGenie Chat Completions. It loads applicable AGENTS.md instructions from the active project directory upward; new projects now receive the canonical file automatically, and legacy projects can initialize it from the File menu. Connection and response settings collapse so write permissions, input mode, history, and composer remain dominant. Chat supports natural Default or shorter Professional responses, while project node writing remains scientific and professional. Electron main owns encrypted credentials, validated tools, atomic writes, and renderer broadcasts.",
           "rationale": "Users should be able to create, summarize, question, research, link, and tag knowledge conversationally while preserving the existing project-file boundary, instruction contract, and automatic UI synchronization.",
           "created_at": "2026-08-11T00:00:00.000Z",
-          "modified_at": "2026-09-21T13:02:51.273Z",
+          "modified_at": "2026-09-24T08:06:46.900Z",
           "children": [
             {
               "id": "assistant-provider-and-credential-boundary",
@@ -902,10 +902,10 @@
                 "user"
               ],
               "main_tag": "project-governance",
-              "summary": "The assistant has three enforced modes. Draft exposes no mutation tools and keeps proposals in chat. Edit can create and update nodes and links but cannot delete nodes. Full can also permanently delete nodes and subtrees. When a task exceeds the selected mode, the assistant presents an Accept once or Decline request for the minimum required capability. Acceptance reruns only that task with the granted mode, leaves the selected mode unchanged, expires after use, and is rejected if the open project changed. The main-process policy is covered by automated capability tests.",
+              "summary": "The assistant has three enforced write-permission modes whose buttons use neutral styling when unselected and signal-light coloring only when active: selected Draft is green, selected Edit is yellow, and selected Full is red. These colors affect only the selected permission button and do not alter Chat or Add note colors. Draft exposes no mutation tools, Edit can create and update nodes and links but cannot delete, and Full can also delete. Ordinary Chat tasks can request one-task escalation; Add note in Draft only previews proposed changes.",
               "rationale": "Users need a predictable safety boundary that supports low-risk brainstorming, normal knowledge maintenance, and explicit destructive work without granting broader or lasting authority than intended.",
               "created_at": "2026-09-16T11:53:40.311Z",
-              "modified_at": "2026-09-16T11:53:40.311Z",
+              "modified_at": "2026-09-24T08:22:04.422Z",
               "children": [],
               "links": [
                 {
@@ -1005,6 +1005,24 @@
                   "relation": "extends"
                 }
               ]
+            },
+            {
+              "id": "caba382e-0e18-47e0-b52a-7fa4bdb50b5e",
+              "title": "Assistant chat and intelligent note workflows",
+              "tags": [
+                "tool-development",
+                "implementation",
+                "decision",
+                "implemented",
+                "user"
+              ],
+              "main_tag": "tool-development",
+              "summary": "Viewer 8.2.0 separates assistant interaction into Chat and Add note. Chat preserves the general conversational workflow. Add note treats the latest input as knowledge to integrate: it reads the project overview, searches for semantic overlap, inspects likely destinations, avoids duplicate or chronological history entries, updates existing knowledge or creates genuinely new nodes, and adds, removes, or reroutes semantic links when appropriate. Version control retains historical states, so the prompt favors a coherent evolving map. Add note uses a distinct amber composer and returns only a terse list of applied changes, or proposed changes in Draft. A separate Default or Professional conversation-style toggle affects chat replies only; Professional is shorter and more direct, while all node titles, summaries, rationales, tags, and relations must remain scientific and professional.",
+              "rationale": "The user wants the assistant to serve both as a conversational collaborator and as an intelligent knowledge-ingestion surface without turning the map into an append-only notebook or weakening project prose quality.",
+              "created_at": "2026-09-24T07:45:40.012Z",
+              "modified_at": "2026-09-24T07:45:40.012Z",
+              "children": [],
+              "links": []
             }
           ],
           "links": []
@@ -1094,10 +1112,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "The distributed AGENTS.md is a compact, deployment-portable schema-7 guide limited to mind-map creation, semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. Its Project CLI section directs automation to the headless NOVA-CLI.exe sidecar, documents the installer-provided per-user NOVA_CLI absolute-path variable for discovery, explicitly notes that the CLI avoids Electron and Chromium and remains usable with ELECTRON_RUN_AS_NODE, and gives npm.cmd run cli as the source-checkout fallback. It contains no application source paths, release engineering, UI implementation, or performance-development instructions. Deterministic project creation and structural correctness belong to the packaged validator and CLI.",
+          "summary": "The canonical AGENTS.md is a compact, deployment-portable schema-7 guide for semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. NOVA 8.3.0 installs it beside the executables and initializes a project-local copy automatically for new desktop and CLI projects. Existing or legacy projects can replace their local copy through File > Init AGENTS.md in Project. The integrated Assistant discovers applicable AGENTS.md files from the active project directory upward, so project-local initialization makes the complete instruction contract available consistently. Deterministic project creation and structural correctness remain enforced by the validator and CLI.",
           "rationale": "A project-maintenance AI needs the storage model and research semantics but not application-development context; removing that material reduces prompt cost and prevents unusable source commands in executable-only deployments.",
           "created_at": "2026-09-11T00:00:00.000Z",
-          "modified_at": "2026-09-24T07:13:28.697Z",
+          "modified_at": "2026-09-24T08:06:45.822Z",
           "children": [],
           "links": [
             {
@@ -1136,10 +1154,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "NOVA release 8.1.0 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, repository-default nova.json project, README, and portable AGENTS.md instructions. The 8.1.0 UI and installer changes remain schema-compatible. nova.json is a conventional default rather than a required filename; every explicit project path remains supported. Packaged instructions direct external agents to the standalone NOVA-CLI.exe sidecar through the installer-provided NOVA_CLI environment variable and retain npm.cmd run cli as a source-checkout fallback. The product remains NOVA, Networked Organization and Visualization Assistant.",
+          "summary": "NOVA release 8.3.2 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, repository-default nova.json project, README, and canonical AGENTS.md instructions. The 8.3.2 selected-only permission-button color refinement remains schema-compatible and does not change chat-mode coloring. New projects receive AGENTS.md automatically, while explicit paths and legacy projects remain supported.",
           "rationale": "The viewer, canonical map format, and maintenance instructions must evolve together so UI or data changes do not silently make the documented contract inaccurate.",
           "created_at": "2026-09-15T14:47:10.222Z",
-          "modified_at": "2026-09-24T07:13:29.703Z",
+          "modified_at": "2026-09-24T08:22:05.468Z",
           "children": [
             {
               "id": "mindmap-versioning-rules",
@@ -1172,10 +1190,10 @@
                 "derived-from-context"
               ],
               "main_tag": "tool-development",
-              "summary": "NOVA requires exactly schema 7 and rejects obsolete or newer map schemas instead of silently rewriting incompatible data. A non-empty viewer_version is required and every save writes release 8.1.0. The graph project-label interaction and CLI installer-discovery release does not change the schema. The explicit schema-6-to-7 migration creates the project root without changing existing node IDs or semantic links.",
+              "summary": "NOVA requires exactly schema 7 and rejects obsolete or newer map schemas instead of silently rewriting incompatible data. A non-empty viewer_version is required and every save writes release 8.3.2. The selected-only assistant permission-button color refinement does not change persisted project schema. The explicit schema-6-to-7 migration creates the project root without changing existing node IDs or semantic links.",
               "rationale": "The breaking development-phase redesign deliberately omits backward compatibility, so incompatible maps must fail safely rather than risk partial or destructive edits.",
               "created_at": "2026-09-14T00:00:00.000Z",
-              "modified_at": "2026-09-24T07:13:30.713Z",
+              "modified_at": "2026-09-24T08:22:06.527Z",
               "children": [],
               "links": []
             },
@@ -1426,276 +1444,288 @@
     "layout_compact": false,
     "positions": {
       "knowledge-map-viewer": [
-        600,
-        400
+        664.0095922412715,
+        365.7855913177908
       ],
       "electron-knowledge-map-rebuild-plan": [
-        -100.17759475834528,
-        248.48036356165747
+        801.5566606068415,
+        594.7260857715244
       ],
       "knowledge-map-navigation": [
-        906.6730097288879,
-        199.07799639023398
+        -589.4923221970048,
+        466.5175695297902
       ],
       "knowledge-map-editing": [
-        938.5116208285608,
-        474.20890450671106
+        -710.4289729345351,
+        334.4511185189916
       ],
       "knowledge-map-save-safety": [
-        397.7276663555851,
-        107.24737032425931
+        21.093233673869,
+        -101.40148479868259
       ],
       "knowledge-map-viewer-smoke-test": [
-        776.2201179361728,
-        683.9653032024347
+        867.7587015831526,
+        416.2336336680192
       ],
       "knowledge-map-rationale-editor": [
-        426.9779112944587,
-        275.20569276112616
+        655.7729631260756,
+        722.2600751556287
       ],
       "knowledge-map-work-categories": [
-        818.277245518517,
-        359.9800563776707
+        -109.46280054692123,
+        1063.0942388782887
       ],
       "knowledge-map-edge-label-layout": [
-        641.245469648693,
-        611.0819915925088
+        606.839631664642,
+        573.4650069579585
       ],
       "item-reference-granularity": [
-        725.3969711344255,
-        218.6708057274106
+        1795.7141218161632,
+        593.6563098906663
       ],
       "knowledge-map-layout-and-dragging": [
-        761.32506532794,
-        1285.7762203599345
+        349.140584588583,
+        1398.2195142378596
       ],
       "knowledge-map-weighted-view": [
-        361.4751287760875,
-        436.14513593660064
+        325.1016758633857,
+        1588.670731860069
       ],
       "local-knowledge-map-assistant": [
-        113.64456098011715,
-        -292.4611944080276
+        1042.4908294773581,
+        -1087.189563316708
       ],
       "embedding-note-intake-workflow": [
-        781.2173660213539,
-        525.5654973895687
+        468.08246612279464,
+        661.0253285279492
       ],
       "knowledge-map-startup-and-navigation": [
-        559.9587131447282,
-        181.92208459190377
+        988.9666630647372,
+        519.6989999876505
       ],
       "knowledge-map-project-creation": [
-        1197.9131099647382,
-        -227.3435318644358
+        -139.1648708825048,
+        -806.3749597057237
       ],
       "canonical-mindmap-template": [
-        472.50114178870564,
-        587.4255511949515
+        700.9431563914944,
+        137.27926035247728
       ],
       "knowledge-map-item-explosion": [
-        679.0782897607768,
-        42.9675489929443
+        1184.4720380473523,
+        1466.3813744326308
       ],
       "mindmap-version-contract": [
-        1157.5085877090855,
-        841.0360069363132
+        495.14391443822853,
+        180.44934618862868
       ],
       "electron-project-directory": [
-        234.1956547542745,
-        585.6477013089365
+        864.8100380918149,
+        242.87734122698643
       ],
       "electron-run-as-node-startup-fix": [
-        25.0650268830978,
-        545.0044760792044
+        880.8004331849507,
+        60.91096141978366
       ],
       "electron-dev-server-url-fix": [
-        64.3788229973032,
-        704.6904598663303
+        746.180436463661,
+        -33.58481645916202
       ],
       "electron-portable-distribution-and-cli-plan": [
-        1251.1489557293035,
-        342.89924946337226
+        48.299965271388245,
+        384.97936691324344
       ],
       "project-cli-implementation": [
-        1465.05376620505,
-        360.0746422374317
+        -136.6151148183696,
+        485.99057477922406
       ],
       "5fc645a2-1e09-4b62-b984-5eff5c95fd6a": [
-        2119.174976772983,
-        -81.42111299754596
+        1210.9938155742318,
+        -168.1395713105853
       ],
       "f067182a-2297-46cc-8ebc-f1904363eb05": [
-        1370.6482593818262,
-        509.26696235291814
+        -321.1652599922729,
+        445.6226674696761
       ],
       "electron-dockable-workspace": [
-        -313.7116257732676,
-        244.26870279230573
+        1011.7640105374176,
+        352.1393583729261
       ],
       "electron-core-viewer-implementation": [
-        620.0782999329681,
-        -266.7122789872774
+        -511.0479372501358,
+        272.88830000269616
       ],
       "08399b46-166a-4afc-8436-529f56b351f1": [
-        696.1053505943199,
-        -469.60890407533213
+        -859.039115271823,
+        222.45847828111746
       ],
       "semantic-zoom-graph-rendering": [
-        -111.15318548469706,
-        1206.4451582339677
+        140.53987360108553,
+        1467.0694595377768
       ],
       "information-weighted-node-bubbles": [
-        -169.78021711551298,
-        1004.4324781008328
+        -44.61697571778416,
+        1800.0728642665592
       ],
       "graph-multiselect-and-group-drag": [
-        105.44058540024096,
-        1271.2975339298764
+        -821.65783797884,
+        1047.0306215567064
       ],
       "automatic-category-color-palette": [
-        -297.9557837413987,
-        1119.9740876318897
+        120.59190053617111,
+        1868.1437108360744
       ],
       "node-hover-content-tooltip": [
-        -202.92266219726926,
-        1427.3745243903147
+        264.17606191369725,
+        1762.8903058722533
       ],
       "tag-centric-electron-node-editing": [
-        -327.00336489693643,
-        1295.0787575159309
+        288.40301846231046,
+        1942.674183559851
       ],
       "electron-guid-node-identity": [
-        72.41391124101287,
-        1086.8461972539794
+        5.733396201868735,
+        610.3664172917669
       ],
       "hierarchy-weighted-electron-relayout": [
-        -17.538106457118747,
-        1422.847154309236
+        438.93612285750237,
+        1825.0086248562316
       ],
       "electron-local-application-boundary": [
-        -85.26828486234292,
-        34.29961343778451
+        204.45869424493054,
+        -262.33576672497264
       ],
       "tkinter-viewer-retirement-plan": [
-        -265.6020441298143,
-        79.76341390263302
+        20.42514721695,
+        -289.2932263261522
       ],
       "large-map-performance-optimization": [
-        738.7163019059047,
-        1495.5134741107177
+        98.36523605230649,
+        1683.3529562071737
       ],
       "large-map-performance-benchmark": [
-        883.337895018125,
-        1604.154730878036
+        495.4399332059498,
+        1651.5190235801876
       ],
       "assistant-provider-and-credential-boundary": [
-        -636.5930220793398,
-        66.09896435419535
+        2142.095760599506,
+        -612.9522105959264
       ],
       "fhgenie-api-web-model-catalog-gap": [
-        -824.9747451018904,
-        117.5777577170339
+        2644.2177305167725,
+        533.9292007689764
       ],
       "fhgenie-web-search-api-gap": [
-        -816.4698669445916,
-        743.430702858205
+        2398.3223731525036,
+        -625.322534208228
       ],
       "assistant-owned-web-search-layer": [
-        -959.8812879349584,
-        864.4394957279823
+        2464.6626049797846,
+        -452.2724623054873
       ],
       "assistant-project-scoped-tools": [
-        116.87864535126613,
-        -535.3906511398146
+        593.0413925624802,
+        -876.16904826893
       ],
       "5a3e1328-dcf2-4fec-9122-8b0985761b5a": [
-        -35.26501105442369,
-        -428.8083825599846
+        941.9683053426608,
+        -760.2386892054533
       ],
       "assistant-capability-modes": [
-        287.68746592297566,
-        -437.9506097452063
+        746.5347820150288,
+        -1030.5464844506007
       ],
       "assistant-chat-input-availability": [
-        -56.670890534198314,
-        -604.4121393620334
+        773.7350229255959,
+        -815.0788144305352
       ],
       "assistant-new-chat-context-reset": [
-        -92.67777592273858,
-        -261.84143645293324
+        906.3428463425439,
+        -933.2837445034983
       ],
       "assistant-fhgenie-provider-support": [
-        330.25944425028905,
-        762.2126002998989
+        2272.58913699511,
+        -460.50674069652524
       ],
       "fhgenie-default-mindmap-model": [
-        403.5485404247585,
-        962.8658530068534
+        2830.859150876701,
+        536.1818214285568
       ],
       "project-root-node-schema-design": [
-        1337.4475559810196,
-        -371.72291131501487
+        -279.03439973190507,
+        -1012.2047898509591
       ],
       "mindmap-versioning-rules": [
-        959.4497703823941,
-        847.9349382203611
+        300.14781928398594,
+        167.2104524042647
       ],
       "mindmap-newer-schema-rejection": [
-        1001.1966139057453,
-        1008.0982754326283
+        582.5847961898871,
+        0.0029776866486795547
       ],
       "electron-live-project-schema-v5": [
-        1335.9615789540112,
-        979.0112883705518
+        -316.1872508969457,
+        870.1085877815095
       ],
       "electron-tag-filter-schema-v6": [
-        1169.4572181034366,
-        1077.9857908126148
+        -737.9117901248746,
+        842.8609719973571
       ],
       "recursive-node-schema-v3": [
-        1768.5996715104004,
-        234.66074703234216
+        455.5415633214595,
+        476.69688354501045
       ],
       "item-to-child-node-migration": [
-        1932.6137520290556,
-        124.53890780853872
+        1964.362299886269,
+        603.3165099129244
       ],
       "recursive-node-viewer-ui": [
-        1694.8521262626166,
-        -595.6996679373445
+        1368.7118558034456,
+        1537.962556996815
       ],
       "collapsed-relation-bubbling": [
-        1802.6200320903304,
-        -762.3475700846558
+        1311.342526189851,
+        1761.7246097074064
       ],
       "global-hierarchy-visibility-controls": [
-        1634.6352423249953,
-        -789.0046010472622
+        1478.7251495767753,
+        1731.4080671656752
       ],
       "persistent-hierarchy-view-state": [
-        1972.1438929499013,
-        288.5757760534472
+        355.8030171481502,
+        322.0368331699323
       ],
       "llm-context-schema-v4": [
-        1360.957406968517,
-        792.7383680551568
+        -286.24660321500943,
+        1065.1666811760233
       ],
       "1fddf6fd-0c6d-4e1a-8248-639b05ffdf34": [
-        2321.1008064226553,
-        -172.2905947206443
+        1398.5535639090042,
+        -259.02207545449465
       ],
       "e869ce32-03ae-4d79-9b3f-8da1317ca8bc": [
-        1399.7662294290462,
-        186.27992005660477
+        -204.42279388031235,
+        310.10358393677876
+      ],
+      "00058132-4ac7-4108-aaae-f402a6f4153a": [
+        -689.1827850966303,
+        163.33228777936145
+      ],
+      "dfa77955-1860-427d-9d32-a94f4bb56607": [
+        1082.1535894827482,
+        -878.5506084826195
+      ],
+      "caba382e-0e18-47e0-b52a-7fa4bdb50b5e": [
+        1234.4112167982782,
+        -994.8751314650007
       ]
     },
-    "zoom": 0.2704729441519463,
+    "zoom": 0.2,
     "viewport": [
-      -22.38713294077271,
-      -1.6298347787526275
+      -40.65286184939873,
+      -21.70738265798593
     ],
-    "layout_mode": "hierarchy",
+    "layout_mode": "relations",
     "workspace": {
       "global": {
         "splitterSize": 5,
@@ -1710,7 +1740,7 @@
           {
             "type": "tabset",
             "id": "graph-tabset",
-            "weight": 57.80392156862745,
+            "weight": 57.7799878446323,
             "children": [
               {
                 "type": "tab",
@@ -1724,7 +1754,7 @@
           {
             "type": "tabset",
             "id": "#dd94733a-8744-46db-a7d0-76cb177c34c1",
-            "weight": 19.137254901960784,
+            "weight": 19.16127962870877,
             "children": [
               {
                 "type": "tab",
@@ -1733,12 +1763,13 @@
                 "component": "assistant",
                 "enablePopout": true
               }
-            ]
+            ],
+            "active": true
           },
           {
             "type": "row",
             "id": "#e0359eb4-aa63-43a4-85b6-fc622c581fdc",
-            "weight": 23.058823529411764,
+            "weight": 23.058732526658932,
             "children": [
               {
                 "type": "tabset",
@@ -1752,8 +1783,7 @@
                     "component": "inspector",
                     "enablePopout": true
                   }
-                ],
-                "active": true
+                ]
               },
               {
                 "type": "tabset",

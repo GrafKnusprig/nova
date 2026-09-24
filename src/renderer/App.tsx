@@ -1927,9 +1927,13 @@ export function App() {
           void window.mindmap.open().then((result) => result && load(result));
         else if (command === "new")
           void (async () => {
-            const next = emptyMap(),
-              saved = await window.mindmap.saveAs(next);
-            if (saved) load({ path: saved, data: next }, "Created project");
+            try {
+              const next = emptyMap(),
+                saved = await window.mindmap.newProject(next);
+              if (saved) load({ path: saved, data: next }, "Created project");
+            } catch (error) {
+              record(`Project creation failed: ${String(error)}`);
+            }
           })();
         else if (command === "save") enqueueSave(current, "manual save");
         else if (command === "save-as") void saveAs();

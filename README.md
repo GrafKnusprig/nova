@@ -163,6 +163,8 @@ NOVA-CLI.exe get --project .\my-research-project.json --id <node-id>
 
 The installer sets the per-user `NOVA_CLI` environment variable to the sidecar's absolute path. New agent or terminal processes can therefore invoke it in PowerShell as `& $env:NOVA_CLI validate --project .\my-research-project.json` without knowing NOVA's installation directory.
 
+The installer also places the canonical `AGENTS.md` beside `NOVA.exe`. Creating a project in NOVA or with `NOVA-CLI.exe init` copies that guidance into the new project directory. For existing projects, **File → Init AGENTS.md in Project** replaces the project-local file with the installed version.
+
 ## The short version
 
 > NOVA is a memory layer for work that has structure.

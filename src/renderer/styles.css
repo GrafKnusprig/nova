@@ -855,7 +855,7 @@ button {
 }
 .assistant-panel {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   height: 100%;
   min-width: 18rem;
   color: #dbe7ef;
@@ -908,11 +908,41 @@ button {
   cursor: default;
 }
 .assistant-settings {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.65rem 0.8rem;
   border-bottom: 1px solid #243448;
   background: rgba(17, 29, 43, 0.82);
+}
+.assistant-settings > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.48rem 0.8rem;
+  color: #a8bac8;
+  cursor: pointer;
+  font-size: 0.65rem;
+  list-style: none;
+}
+.assistant-settings > summary::before {
+  content: "▸";
+  color: #6fd7df;
+}
+.assistant-settings[open] > summary::before {
+  content: "▾";
+}
+.assistant-settings > summary span:first-child {
+  flex: 1;
+}
+.assistant-settings > summary span:last-child {
+  overflow: hidden;
+  color: #71889a;
+  font-size: 0.57rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assistant-settings-body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.15rem 0.8rem 0.7rem;
 }
 .assistant-key-row,
 .assistant-model-row {
@@ -937,6 +967,7 @@ button {
   line-height: 1.35;
 }
 .assistant-settings button,
+.assistant-primary-controls button,
 .assistant-panel > footer button,
 .assistant-approval button {
   border: 1px solid #3c536a;
@@ -948,6 +979,7 @@ button {
   font-size: 0.65rem;
 }
 .assistant-settings button:disabled,
+.assistant-primary-controls button:disabled,
 .assistant-panel > footer button:disabled {
   opacity: 0.45;
   cursor: default;
@@ -969,14 +1001,62 @@ button {
   grid-template-columns: repeat(3, 1fr);
   gap: 0.3rem;
 }
-.assistant-modes button {
+.assistant-primary-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.7fr);
+  gap: 0.7rem;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid #243448;
+  background: rgba(10, 18, 29, 0.84);
+}
+.assistant-setting-label {
+  margin: 0 0 0.28rem;
+  color: #91a6b7;
+  font-size: 0.59rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.assistant-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+.assistant-choice button {
   text-transform: capitalize;
 }
-.assistant-modes button.active {
+.assistant-choice button.active {
   border-color: #66d9e2;
   color: #effeff;
   background: #214956;
   box-shadow: inset 0 -2px #65dce6;
+}
+.assistant-input-modes button:last-child.active {
+  border-color: #dba85f;
+  color: #fff3d8;
+  background: #57401f;
+  box-shadow: inset 0 -2px #e2ad60;
+}
+.assistant-modes button {
+  text-transform: capitalize;
+}
+.assistant-modes button:nth-child(1).active {
+  border-color: #67d49f;
+  color: #effff6;
+  background: #236044;
+  box-shadow: inset 0 -2px #72e6ad, 0 0 7px rgba(103, 212, 159, 0.2);
+}
+.assistant-modes button:nth-child(2).active {
+  border-color: #e0bd4f;
+  color: #fff9dc;
+  background: #6a561b;
+  box-shadow: inset 0 -2px #f0ca54, 0 0 7px rgba(224, 189, 79, 0.2);
+}
+.assistant-modes button:nth-child(3).active {
+  border-color: #df6979;
+  color: #fff0f2;
+  background: #702b36;
+  box-shadow: inset 0 -2px #ed7182, 0 0 7px rgba(223, 105, 121, 0.2);
 }
 .assistant-mode-help {
   margin: 0;
@@ -1088,6 +1168,31 @@ button {
 }
 .assistant-panel > footer textarea:focus {
   border-color: #5fd6df;
+}
+.assistant-panel.note-mode .assistant-chat {
+  background: linear-gradient(180deg, rgba(91, 62, 22, 0.14), transparent 35%);
+}
+.assistant-panel.note-mode > footer {
+  border-top-color: #76562c;
+  background: rgba(67, 45, 18, 0.34);
+}
+.assistant-panel.note-mode > footer textarea {
+  border-color: #886438;
+  background: #191208;
+}
+.assistant-panel.note-mode > footer textarea:focus {
+  border-color: #dda95d;
+  box-shadow: 0 0 0 1px rgba(221, 169, 93, 0.2);
+}
+.assistant-panel.note-mode > footer button.primary {
+  border-color: #c78d43;
+  color: #fff4dd;
+  background: #75501f;
+}
+@media (max-width: 560px) {
+  .assistant-primary-controls {
+    grid-template-columns: 1fr;
+  }
 }
 .editor-tooltip {
   width: min(420px, calc(100vw - 24px));

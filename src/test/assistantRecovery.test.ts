@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AssistantToolGuard, assistantSafetyStop, assistantToolFingerprint, MAX_ASSISTANT_TOOL_ROUNDS, normalizeAssistantToken, recoverableToolError } from "../main/assistant";
+import { AssistantToolGuard, assistantBehaviorInstructions, assistantSafetyStop, assistantToolFingerprint, MAX_ASSISTANT_TOOL_ROUNDS, normalizeAssistantToken, recoverableToolError } from "../main/assistant";
 
 test("assistant normalizes human-readable tag and relation labels", () => {
   assert.equal(normalizeAssistantToken("Work Tasks", "tag"), "work-tasks");
@@ -70,4 +70,22 @@ test("assistant safety stops are user-facing replies", () => {
   assert.equal(budget.changed, false);
   assert.match(budget.text, /unusually large number of project steps/i);
   assert.match(budget.text, /No project changes were saved/i);
+});
+
+test("assistant response style never relaxes scientific project writing", () => {
+  const natural = assistantBehaviorInstructions("chat", "default", "edit");
+  const professional = assistantBehaviorInstructions("chat", "professional", "edit");
+  assert.match(natural, /scientific, professional language/);
+  assert.doesNotMatch(natural, /PROFESSIONAL CONVERSATION STYLE/);
+  assert.match(professional, /shorter, precise, direct/);
+  assert.match(professional, /scientific, professional language/);
+});
+
+test("note mode integrates current knowledge and previews changes in draft", () => {
+  const draft = assistantBehaviorInstructions("note", "default", "draft");
+  const edit = assistantBehaviorInstructions("note", "default", "edit");
+  assert.match(draft, /avoid duplicates and history-log entries/);
+  assert.match(draft, /do not request write permission/);
+  assert.match(draft, /would be created, updated, linked, unlinked/);
+  assert.match(edit, /what was created, updated, linked, unlinked/);
 });

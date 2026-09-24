@@ -1,6 +1,6 @@
 {
   "name": "nova",
-  "version": "8.1.0",
+  "version": "8.3.2",
   "private": true,
   "description": "NOVA — Networked Organization & Visualization Assistant.",
   "author": "Philipp Unger",
@@ -58,6 +58,10 @@
       {
         "from": "out/cli/NOVA-CLI.exe",
         "to": "NOVA-CLI.exe"
+      },
+      {
+        "from": "AGENTS.md",
+        "to": "AGENTS.md"
       }
     ],
     "win": {

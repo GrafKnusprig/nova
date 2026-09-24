@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { addLlmInstruction, changeProjectLink, children, createProjectFile, createProjectNode, defineProjectTag, deleteProjectNode, findNode, moveProjectNode, mutateProject, nodes, projectRoot, readProject, removeLlmInstruction, removeProjectTagDefinition, setLlmContextSummary, updateProjectNode, validateMap, writeProjectAtomic } from "../main/project";
+import { initializeProjectAgents } from "../main/agentsFile";
 
 async function fixture(): Promise<{ directory: string; file: string }> { const directory = await fs.mkdtemp(path.join(os.tmpdir(), "nova-cli-test-")), file = path.join(directory, "arbitrary-project-name.json"); await createProjectFile(file, "Test project", "Test description"); return { directory, file }; }
 
@@ -55,4 +56,15 @@ test("project layout profile is persisted and validated", async (context) => {
   view.live_expand = true;
   view.layout_mode = "invalid";
   assert.throws(() => validateMap(loaded.document), /layout_mode/);
+});
+
+test("project AGENTS initialization overwrites the project-local file", async (context) => {
+  const { directory, file } = await fixture();
+  context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const template = path.join(directory, "installed-AGENTS.md");
+  const destination = path.join(directory, "AGENTS.md");
+  await fs.writeFile(template, "canonical instructions\n", "utf8");
+  await fs.writeFile(destination, "legacy instructions\n", "utf8");
+  assert.equal(await initializeProjectAgents(file, [path.join(directory, "missing.md"), template]), destination);
+  assert.equal(await fs.readFile(destination, "utf8"), "canonical instructions\n");
 });

@@ -82,8 +82,11 @@ try {
     "Packaged CLI smoke test",
   ]);
   const initResult = JSON.parse(initialized.stdout);
-  if (!initResult.ok || initResult.command !== "init" || initialized.stderr.trim())
+  const projectAgents = path.join(temporaryDirectory, "AGENTS.md");
+  if (!initResult.ok || initResult.command !== "init" || path.resolve(initResult.agents) !== projectAgents || initialized.stderr.trim())
     throw new Error(`Unexpected init result: ${initialized.stdout} ${initialized.stderr}`);
+  if (await readFile(projectAgents, "utf8") !== await readFile(path.join(path.dirname(executable), "AGENTS.md"), "utf8"))
+    throw new Error("Packaged CLI did not initialize the project with the installed AGENTS.md template.");
 
   const validated = await runCli(["validate", "--project", project]);
   const validateResult = JSON.parse(validated.stdout);
@@ -101,7 +104,7 @@ try {
   if (leaked.length)
     throw new Error(`Packaged CLI left NOVA processes running: ${leaked.join(", ")}`);
 
-  process.stdout.write("Packaged NOVA CLI exited cleanly with valid JSON and no leftover processes.\n");
+  process.stdout.write("Packaged NOVA CLI initialized AGENTS.md and exited cleanly with valid JSON and no leftover processes.\n");
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true });
 }

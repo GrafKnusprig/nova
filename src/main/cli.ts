@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { addLlmInstruction, changeProjectLink, children, createProjectFile, createProjectNode, defineProjectTag, deleteProjectNode, findNode, flattenNodes, generateUniqueId, moveProjectNode, mutateProject, nodes, projectRoot, projectRootId, readProject, removeLlmInstruction, removeProjectTagDefinition, setLlmContextSummary, stringValue, updateProjectNode, VIEWER_VERSION } from "./project";
+import { initializeProjectAgents } from "./agentsFile";
 
 type Options = Record<string, string | boolean>;
 const HELP = `NOVA CLI ${VIEWER_VERSION}
@@ -41,7 +42,7 @@ function compact(node: Record<string, unknown>): Record<string, unknown> { retur
 
 async function execute(command: string, options: Options): Promise<unknown> {
   const filePath = projectPath(options);
-  if (command === "init") { const document = await createProjectFile(filePath, option(options, "name"), await textOption(options, "summary")); const root = projectRoot(document); return { ok: true, command, project: filePath, root_node_id: root.id, name: root.title }; }
+  if (command === "init") { const document = await createProjectFile(filePath, option(options, "name"), await textOption(options, "summary")); const agents = await initializeProjectAgents(filePath); const root = projectRoot(document); return { ok: true, command, project: filePath, agents, root_node_id: root.id, name: root.title }; }
   if (command === "validate") { const { document } = await readProject(filePath); const all = flattenNodes(nodes(document)), links = all.reduce((sum, node) => sum + (node.links as unknown[]).length, 0), root = projectRoot(document); return { ok: true, command, project: filePath, schema: document.version, viewer_version: document.viewer_version, root_node_id: root.id, name: root.title, node_count: all.length, link_count: links }; }
   if (command === "id") { const { document } = await readProject(filePath); return { ok: true, command, project: filePath, id: generateUniqueId(document) }; }
   if (command === "list") { const { document } = await readProject(filePath); const parentId = option(options, "parent"), entries = parentId ? children(findNode(nodes(document), parentId) ?? (() => { throw new Error(`Node ${parentId} does not exist.`); })()).map((node) => ({ ...node, parentId, depth: flattenNodes(nodes(document)).find((entry) => entry.id === parentId)!.depth + 1 })) : flattenNodes(nodes(document)); return { ok: true, command, project: filePath, nodes: entries.map(compact) }; }
