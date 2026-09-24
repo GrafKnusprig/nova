@@ -1,6 +1,6 @@
 {
   "version": 7,
-  "viewer_version": "8.3.2",
+  "viewer_version": "8.4.0",
   "project": {
     "root_node_id": "knowledge-map-viewer"
   },
@@ -268,10 +268,10 @@
                     "user"
                   ],
                   "main_tag": "tool-development",
-                  "summary": "NOVA release 8.3.2 provides consistent application branding across the package, executables, installer, windows, AI Assistant, CLI, project instructions, splash, and About dialog. The supplied icon is used for application windows and the Windows executable. Startup shows the frameless splash before application services and keeps it visible for at least one second. About NOVA shows the icon, full subtitle, release version, attribution, and project link. Legacy settings locations remain supported so upgrades preserve the last opened project.",
+                  "summary": "NOVA release 8.4.0 provides consistent application branding across the package, executables, installer, windows, AI Assistant, CLI, project instructions, splash, and About dialog. The supplied icon is used for application windows and the Windows executable. Startup shows the frameless splash before application services and keeps it visible for at least one second. About NOVA shows the icon, full subtitle, release version, attribution, and project link. Legacy settings locations remain supported so upgrades preserve the last opened project.",
                   "rationale": "The finished standalone tool needs one coherent identity and polished dark startup/about surfaces without losing per-user continuity during the product rename.",
                   "created_at": "2026-09-18T11:00:44.762Z",
-                  "modified_at": "2026-09-24T08:22:07.565Z",
+                  "modified_at": "2026-09-24T08:40:16.220Z",
                   "children": [],
                   "links": []
                 }
@@ -749,10 +749,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "Viewer 8.3.0 provides a dockable multi-provider AI Assistant supporting OpenAI Responses and FhGenie Chat Completions. It loads applicable AGENTS.md instructions from the active project directory upward; new projects now receive the canonical file automatically, and legacy projects can initialize it from the File menu. Connection and response settings collapse so write permissions, input mode, history, and composer remain dominant. Chat supports natural Default or shorter Professional responses, while project node writing remains scientific and professional. Electron main owns encrypted credentials, validated tools, atomic writes, and renderer broadcasts.",
+          "summary": "Viewer 8.4.0 provides a dockable multi-provider AI Assistant supporting OpenAI Responses and FhGenie Chat Completions. Its per-message queue permits mixed Chat and Add note submissions while another request runs, serializes provider work to protect project writes, and keeps each response beside its originating color-coded message. It loads AGENTS.md from the project hierarchy; new projects receive the canonical file automatically. Connection settings collapse, Chat supports Default or Professional replies, and project node writing remains scientific and professional. Electron main owns encrypted credentials, validated tools, atomic writes, and renderer broadcasts.",
           "rationale": "Users should be able to create, summarize, question, research, link, and tag knowledge conversationally while preserving the existing project-file boundary, instruction contract, and automatic UI synchronization.",
           "created_at": "2026-08-11T00:00:00.000Z",
-          "modified_at": "2026-09-24T08:06:46.900Z",
+          "modified_at": "2026-09-24T08:40:13.049Z",
           "children": [
             {
               "id": "assistant-provider-and-credential-boundary",
@@ -1017,10 +1017,10 @@
                 "user"
               ],
               "main_tag": "tool-development",
-              "summary": "Viewer 8.2.0 separates assistant interaction into Chat and Add note. Chat preserves the general conversational workflow. Add note treats the latest input as knowledge to integrate: it reads the project overview, searches for semantic overlap, inspects likely destinations, avoids duplicate or chronological history entries, updates existing knowledge or creates genuinely new nodes, and adds, removes, or reroutes semantic links when appropriate. Version control retains historical states, so the prompt favors a coherent evolving map. Add note uses a distinct amber composer and returns only a terse list of applied changes, or proposed changes in Draft. A separate Default or Professional conversation-style toggle affects chat replies only; Professional is shorter and more direct, while all node titles, summaries, rationales, tags, and relations must remain scientific and professional.",
+              "summary": "Viewer 8.4.0 treats assistant submissions as per-message Chat or Add note workflows. Each message snapshots its interaction type, response style, and write permission when submitted, and user request bubbles display that saved write permission in a compact footer with draft-green, edit-yellow, or full-red text. Chat bubbles keep the default blue treatment; Add note user bubbles and their corresponding assistant replies use an amber treatment. While one request is processed, mixed Chat and Add note messages can be stacked in a sequential queue. Queued messages have a dotted outline and discard control; processing makes a message permanent and removes that control. Provider requests remain serialized to prevent concurrent project mutations, and each response is inserted directly after its originating message so queued conversations remain coherent.",
               "rationale": "The user wants the assistant to serve both as a conversational collaborator and as an intelligent knowledge-ingestion surface without turning the map into an append-only notebook or weakening project prose quality.",
               "created_at": "2026-09-24T07:45:40.012Z",
-              "modified_at": "2026-09-24T07:45:40.012Z",
+              "modified_at": "2026-09-24T08:46:00.811Z",
               "children": [],
               "links": []
             }
@@ -1154,10 +1154,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "NOVA release 8.3.2 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, repository-default nova.json project, README, and canonical AGENTS.md instructions. The 8.3.2 selected-only permission-button color refinement remains schema-compatible and does not change chat-mode coloring. New projects receive AGENTS.md automatically, while explicit paths and legacy projects remain supported.",
+          "summary": "NOVA release 8.4.0 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, repository-default nova.json project, README, and canonical AGENTS.md instructions. The 8.4.0 per-message Assistant queue and message coloring remain schema-compatible because chat history is session state. New projects receive AGENTS.md automatically, while explicit paths and legacy projects remain supported.",
           "rationale": "The viewer, canonical map format, and maintenance instructions must evolve together so UI or data changes do not silently make the documented contract inaccurate.",
           "created_at": "2026-09-15T14:47:10.222Z",
-          "modified_at": "2026-09-24T08:22:05.468Z",
+          "modified_at": "2026-09-24T08:40:14.102Z",
           "children": [
             {
               "id": "mindmap-versioning-rules",
@@ -1190,10 +1190,10 @@
                 "derived-from-context"
               ],
               "main_tag": "tool-development",
-              "summary": "NOVA requires exactly schema 7 and rejects obsolete or newer map schemas instead of silently rewriting incompatible data. A non-empty viewer_version is required and every save writes release 8.3.2. The selected-only assistant permission-button color refinement does not change persisted project schema. The explicit schema-6-to-7 migration creates the project root without changing existing node IDs or semantic links.",
+              "summary": "NOVA requires exactly schema 7 and rejects obsolete or newer map schemas instead of silently rewriting incompatible data. A non-empty viewer_version is required and every save writes release 8.4.0. The per-message Assistant queue and Chat or Add note bubble coloring do not change persisted project schema. The explicit schema-6-to-7 migration creates the project root without changing existing node IDs or semantic links.",
               "rationale": "The breaking development-phase redesign deliberately omits backward compatibility, so incompatible maps must fail safely rather than risk partial or destructive edits.",
               "created_at": "2026-09-14T00:00:00.000Z",
-              "modified_at": "2026-09-24T08:22:06.527Z",
+              "modified_at": "2026-09-24T08:40:15.159Z",
               "children": [],
               "links": []
             },
@@ -1444,286 +1444,286 @@
     "layout_compact": false,
     "positions": {
       "knowledge-map-viewer": [
-        664.0095922412715,
-        365.7855913177908
+        684.7075916219858,
+        275.1033677296466
       ],
       "electron-knowledge-map-rebuild-plan": [
-        801.5566606068415,
-        594.7260857715244
+        790.4228559010146,
+        553.1712950076152
       ],
       "knowledge-map-navigation": [
-        -589.4923221970048,
-        466.5175695297902
+        -649.5249718245786,
+        456.54676904407467
       ],
       "knowledge-map-editing": [
-        -710.4289729345351,
-        334.4511185189916
+        -721.3877846152692,
+        292.52555965276207
       ],
       "knowledge-map-save-safety": [
-        21.093233673869,
-        -101.40148479868259
+        -0.4742447711134437,
+        -116.18267456086735
       ],
       "knowledge-map-viewer-smoke-test": [
-        867.7587015831526,
-        416.2336336680192
+        867.1296443047522,
+        378.9104599478042
       ],
       "knowledge-map-rationale-editor": [
-        655.7729631260756,
-        722.2600751556287
+        735.2194111532974,
+        738.7791148211999
       ],
       "knowledge-map-work-categories": [
-        -109.46280054692123,
-        1063.0942388782887
+        -113.35637726965189,
+        1029.604480294822
       ],
       "knowledge-map-edge-label-layout": [
-        606.839631664642,
-        573.4650069579585
+        609.9740226253974,
+        477.0548484889181
       ],
       "item-reference-granularity": [
-        1795.7141218161632,
-        593.6563098906663
+        1876.367834494373,
+        520.4935090365102
       ],
       "knowledge-map-layout-and-dragging": [
-        349.140584588583,
-        1398.2195142378596
+        304.1296743986921,
+        1364.1226241902532
       ],
       "knowledge-map-weighted-view": [
-        325.1016758633857,
-        1588.670731860069
+        369.9695351111768,
+        1544.4409362287365
       ],
       "local-knowledge-map-assistant": [
-        1042.4908294773581,
-        -1087.189563316708
+        1073.1087812330734,
+        -773.4634159249067
       ],
       "embedding-note-intake-workflow": [
-        468.08246612279464,
-        661.0253285279492
+        606.2216237822762,
+        641.0860114259419
       ],
       "knowledge-map-startup-and-navigation": [
-        988.9666630647372,
-        519.6989999876505
+        989.8551054591856,
+        522.0312487465075
       ],
       "knowledge-map-project-creation": [
-        -139.1648708825048,
-        -806.3749597057237
+        -143.68498528451562,
+        -807.0649809512834
       ],
       "canonical-mindmap-template": [
-        700.9431563914944,
-        137.27926035247728
+        771.7984842892813,
+        60.66142145354543
       ],
       "knowledge-map-item-explosion": [
-        1184.4720380473523,
-        1466.3813744326308
+        1305.4417900887368,
+        1421.5129921022142
       ],
       "mindmap-version-contract": [
-        495.14391443822853,
-        180.44934618862868
+        418.39967421406527,
+        183.56327321422634
       ],
       "electron-project-directory": [
-        864.8100380918149,
-        242.87734122698643
+        911.2755351563596,
+        211.22905309656252
       ],
       "electron-run-as-node-startup-fix": [
-        880.8004331849507,
-        60.91096141978366
+        948.2699934168759,
+        32.33603910987239
       ],
       "electron-dev-server-url-fix": [
-        746.180436463661,
-        -33.58481645916202
+        658.8870488517458,
+        -75.33518436489814
       ],
       "electron-portable-distribution-and-cli-plan": [
-        48.299965271388245,
-        384.97936691324344
+        42.56347342766267,
+        350.59765784315044
       ],
       "project-cli-implementation": [
-        -136.6151148183696,
-        485.99057477922406
+        -168.14104071244205,
+        351.0347456628071
       ],
       "5fc645a2-1e09-4b62-b984-5eff5c95fd6a": [
-        1210.9938155742318,
-        -168.1395713105853
+        1192.6609002457283,
+        -192.79015333294407
       ],
       "f067182a-2297-46cc-8ebc-f1904363eb05": [
-        -321.1652599922729,
-        445.6226674696761
+        -137.39474481069644,
+        685.7728761448244
       ],
       "electron-dockable-workspace": [
-        1011.7640105374176,
-        352.1393583729261
+        1023.1151879623942,
+        356.23556984200803
       ],
       "electron-core-viewer-implementation": [
-        -511.0479372501358,
-        272.88830000269616
+        -511.79280189699983,
+        299.4555576336238
       ],
       "08399b46-166a-4afc-8436-529f56b351f1": [
-        -859.039115271823,
-        222.45847828111746
+        -860.1939024814528,
+        196.31271898367672
       ],
       "semantic-zoom-graph-rendering": [
-        140.53987360108553,
-        1467.0694595377768
+        144.02384104122518,
+        1514.5111422552895
       ],
       "information-weighted-node-bubbles": [
-        -44.61697571778416,
-        1800.0728642665592
+        -60.819965297192596,
+        1763.5192604161125
       ],
       "graph-multiselect-and-group-drag": [
-        -821.65783797884,
-        1047.0306215567064
+        -819.0846872019487,
+        1050.2021187448568
       ],
       "automatic-category-color-palette": [
-        120.59190053617111,
-        1868.1437108360744
+        48.41192690093371,
+        1904.9393146388813
       ],
       "node-hover-content-tooltip": [
-        264.17606191369725,
-        1762.8903058722533
+        304.8756670433576,
+        1722.2187416211762
       ],
       "tag-centric-electron-node-editing": [
-        288.40301846231046,
-        1942.674183559851
+        231.24665481737662,
+        1888.0578643614338
       ],
       "electron-guid-node-identity": [
-        5.733396201868735,
-        610.3664172917669
+        -47.066393045973065,
+        530.7427034454049
       ],
       "hierarchy-weighted-electron-relayout": [
-        438.93612285750237,
-        1825.0086248562316
+        421.1146038997711,
+        1866.7606078817018
       ],
       "electron-local-application-boundary": [
-        204.45869424493054,
-        -262.33576672497264
+        194.80439902327004,
+        -252.49036476014865
       ],
       "tkinter-viewer-retirement-plan": [
-        20.42514721695,
-        -289.2932263261522
+        14.958349299618304,
+        -299.92926713688684
       ],
       "large-map-performance-optimization": [
-        98.36523605230649,
-        1683.3529562071737
+        121.32431587722392,
+        1733.6938407511063
       ],
       "large-map-performance-benchmark": [
-        495.4399332059498,
-        1651.5190235801876
+        475.10057751531826,
+        1692.4710598138302
       ],
       "assistant-provider-and-credential-boundary": [
-        2142.095760599506,
-        -612.9522105959264
+        2158.0057226030153,
+        -599.5269061596551
       ],
       "fhgenie-api-web-model-catalog-gap": [
-        2644.2177305167725,
-        533.9292007689764
+        2680.7067792524986,
+        462.5426348440703
       ],
       "fhgenie-web-search-api-gap": [
-        2398.3223731525036,
-        -625.322534208228
+        2386.2572356203877,
+        -599.0582706831353
       ],
       "assistant-owned-web-search-layer": [
-        2464.6626049797846,
-        -452.2724623054873
+        2453.5927786869206,
+        -426.3935161454878
       ],
       "assistant-project-scoped-tools": [
-        593.0413925624802,
-        -876.16904826893
+        655.0000297456769,
+        -794.0431187819819
       ],
       "5a3e1328-dcf2-4fec-9122-8b0985761b5a": [
-        941.9683053426608,
-        -760.2386892054533
+        960.445377015136,
+        -944.5936454463005
       ],
       "assistant-capability-modes": [
-        746.5347820150288,
-        -1030.5464844506007
+        776.5586646148872,
+        -974.9382531930017
       ],
       "assistant-chat-input-availability": [
-        773.7350229255959,
-        -815.0788144305352
+        934.0032097523413,
+        -1119.5470075193316
       ],
       "assistant-new-chat-context-reset": [
-        906.3428463425439,
-        -933.2837445034983
+        761.3600756229964,
+        -1161.3989915262425
       ],
       "assistant-fhgenie-provider-support": [
-        2272.58913699511,
-        -460.50674069652524
+        2261.3461453026325,
+        -427.5126294660952
       ],
       "fhgenie-default-mindmap-model": [
-        2830.859150876701,
-        536.1818214285568
+        2767.608736076361,
+        627.7338699545697
       ],
       "project-root-node-schema-design": [
-        -279.03439973190507,
-        -1012.2047898509591
+        -291.5431274373522,
+        -1009.333746563336
       ],
       "mindmap-versioning-rules": [
-        300.14781928398594,
-        167.2104524042647
+        327.5177832434895,
+        412.6901249813161
       ],
       "mindmap-newer-schema-rejection": [
-        582.5847961898871,
-        0.0029776866486795547
+        587.5466671144765,
+        75.74694555739738
       ],
       "electron-live-project-schema-v5": [
-        -316.1872508969457,
-        870.1085877815095
+        -336.04515146086544,
+        894.2326659729862
       ],
       "electron-tag-filter-schema-v6": [
-        -737.9117901248746,
-        842.8609719973571
+        -745.2618810321434,
+        846.9883957774858
       ],
       "recursive-node-schema-v3": [
-        455.5415633214595,
-        476.69688354501045
+        445.67216604360743,
+        549.6175318609743
       ],
       "item-to-child-node-migration": [
-        1964.362299886269,
-        603.3165099129244
+        1870.0569574642798,
+        689.3002042659687
       ],
       "recursive-node-viewer-ui": [
-        1368.7118558034456,
-        1537.962556996815
+        1231.202279890056,
+        1605.7198864329257
       ],
       "collapsed-relation-bubbling": [
-        1311.342526189851,
-        1761.7246097074064
+        1367.5602374001871,
+        1794.6758680522687
       ],
       "global-hierarchy-visibility-controls": [
-        1478.7251495767753,
-        1731.4080671656752
+        1475.83048643658,
+        1663.4753019758869
       ],
       "persistent-hierarchy-view-state": [
-        355.8030171481502,
-        322.0368331699323
+        486.4804150513139,
+        370.159654999813
       ],
       "llm-context-schema-v4": [
-        -286.24660321500943,
-        1065.1666811760233
+        -281.91329426716396,
+        1083.1111434602353
       ],
       "1fddf6fd-0c6d-4e1a-8248-639b05ffdf34": [
-        1398.5535639090042,
-        -259.02207545449465
+        1380.121495051284,
+        -273.42984913104505
       ],
       "e869ce32-03ae-4d79-9b3f-8da1317ca8bc": [
-        -204.42279388031235,
-        310.10358393677876
+        -226.05384698174538,
+        530.3996449300064
       ],
       "00058132-4ac7-4108-aaae-f402a6f4153a": [
-        -689.1827850966303,
-        163.33228777936145
+        -638.1667901257749,
+        141.50672397107007
       ],
       "dfa77955-1860-427d-9d32-a94f4bb56607": [
-        1082.1535894827482,
-        -878.5506084826195
+        1106.857595053382,
+        -1055.1033006571217
       ],
       "caba382e-0e18-47e0-b52a-7fa4bdb50b5e": [
-        1234.4112167982782,
-        -994.8751314650007
+        852.3002995353498,
+        -796.347452869246
       ]
     },
-    "zoom": 0.2,
+    "zoom": 0.2983649395282541,
     "viewport": [
-      -40.65286184939873,
-      -21.70738265798593
+      -87.45078199518485,
+      -8.510102974870122
     ],
     "layout_mode": "relations",
     "workspace": {

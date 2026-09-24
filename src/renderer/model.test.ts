@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { communityEdgeWeight, detectCommunities } from "./layoutModel";
+import { insertAssistantReply, type AssistantQueueEntry } from "./AssistantPanel";
 import {
   ancestorPath,
   arrangeRevealedNodes,
@@ -363,4 +364,15 @@ test("main topics are inserted beneath the project root", () => {
   const nodes = insertNode(document.nodes, topic, root.id);
   assert.equal(nodes.length, 1);
   assert.equal(nodes[0].children[0].id, topic.id);
+});
+
+test("assistant replies stay beside their request and preserve message type", () => {
+  const active: AssistantQueueEntry = { id: "active", requestId: "active", role: "user", content: "A note", interactionMode: "note", conversationStyle: "professional", mode: "edit", status: "processing" };
+  const queued: AssistantQueueEntry = { id: "queued", requestId: "queued", role: "user", content: "A question", interactionMode: "chat", conversationStyle: "default", mode: "draft", status: "queued" };
+  const result = insertAssistantReply([active, queued], "active", "Updated one node.", "note", "edit", "professional");
+  assert.deepEqual(result.map((entry) => [entry.requestId, entry.role, entry.interactionMode, entry.status]), [
+    ["active", "user", "note", "complete"],
+    ["active", "assistant", "note", "complete"],
+    ["queued", "user", "chat", "queued"],
+  ]);
 });
