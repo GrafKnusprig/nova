@@ -1,6 +1,6 @@
 {
   "version": 7,
-  "viewer_version": "8.0.1",
+  "viewer_version": "8.1.0",
   "project": {
     "root_node_id": "knowledge-map-viewer"
   },
@@ -104,10 +104,10 @@
                     "user"
                   ],
                   "main_tag": "tool-development",
-                  "summary": "NOVA separates compilation from installer packaging: npm run build performs TypeScript checks, creates the Vite renderer output, copies AGENTS.md into dist, and compiles Electron main/preload code; npm run package runs that build and then Electron Builder for Windows. A clean packaging test produced the x64 NSIS installer dist/NOVA-8.0.1-x64.exe plus its blockmap and unpacked application. The shared domain layer also supplies the deterministic schema-7 CLI and optimistic revision checks.",
+                  "summary": "NOVA separates compilation from installer packaging: npm run build performs TypeScript checks, creates the Vite renderer output, copies AGENTS.md into dist, and compiles Electron main/preload code; npm run package additionally builds NOVA-CLI.exe and invokes Electron Builder for Windows. A clean packaging test produced the x64 NSIS installer dist/NOVA-8.1.0-x64.exe, its blockmap, and an unpacked application containing the CLI sidecar. The installer sets a per-user NOVA_CLI discovery variable through a custom NSIS hook. The shared domain layer supplies the deterministic schema-7 CLI and optimistic revision checks.",
                   "rationale": "The map must remain an open JSON knowledge record that both the viewer and external LLM agents can maintain, while end users should need neither Node.js nor Python and concurrent writers should not silently lose changes.",
                   "created_at": "2026-09-17T07:56:12.945Z",
-                  "modified_at": "2026-09-21T14:04:33.939Z",
+                  "modified_at": "2026-09-24T07:14:02.786Z",
                   "children": [
                     {
                       "id": "project-cli-implementation",
@@ -120,10 +120,10 @@
                         "user"
                       ],
                       "main_tag": "tool-development",
-                      "summary": "Viewer 8.0.1 packages a genuinely headless NOVA-CLI.exe automation sidecar as a Node single-executable application. It supports init, validate, collision-checked UUID generation, list, get, node create/update/move/delete, semantic links, and deterministic LLM-context, instruction, and tag-definition maintenance without initializing Electron, Chromium, Crashpad, Mojo IPC, windows, settings, or watchers; it is also unaffected by ELECTRON_RUN_AS_NODE. NOVA.exe cli remains a compatibility path and now executes before app.whenReady when Electron mode is available. GUI and CLI operations share schema validation, protected-root rules, timestamps, cleanup, atomic replacement, and stale-revision detection. A packaged Windows smoke test creates and validates a temporary project, requires clean JSON and stderr, enforces a timeout, and checks for leftover executable processes.",
+                      "summary": "Viewer 8.1.0 packages the genuinely headless NOVA-CLI.exe automation sidecar as a Node single-executable application and installs it beside NOVA.exe. The per-user NOVA_CLI environment variable exposes its absolute path to agent and terminal processes started after installation; uninstall removes the variable only when it still points to that installation. The CLI supports init, validate, collision-checked UUID generation, list, get, node create/update/move/delete, semantic links, and deterministic LLM-context, instruction, and tag-definition maintenance without initializing Electron or Chromium and remains unaffected by ELECTRON_RUN_AS_NODE. NOVA.exe cli remains a compatibility path. GUI and CLI operations share schema validation, protected-root rules, timestamps, cleanup, atomic replacement, and stale-revision detection. The packaged Windows smoke test verifies clean JSON, clean exit, and no leftover executable processes.",
                       "rationale": "External agents need a deterministic CLI that exits cleanly in restricted automation environments without dialogs or orphaned Electron processes, while retaining a compatibility command for ordinary desktop shells.",
                       "created_at": "2026-09-17T08:10:37.458Z",
-                      "modified_at": "2026-09-22T11:00:08.287Z",
+                      "modified_at": "2026-09-24T07:13:26.631Z",
                       "children": [],
                       "links": [
                         {
@@ -198,10 +198,10 @@
                         "user"
                       ],
                       "main_tag": "implementation",
-                      "summary": "NOVA 8.0.1 has been freshly packaged as the Windows x64 NSIS installer dist/NOVA-8.0.1-x64.exe (216,046,678 bytes; SHA-256 4113ED3C6C9787E05D4B2A20092401FE596D02C72BBD54BD924FC8704DDC5361) with a corresponding blockmap and unpacked application. Authenticode inspection reports NotSigned, so release documentation must disclose that Windows SmartScreen may warn. The README points users to GitHub's latest-release URL for the pre-built installer. Publishing tag v8.0.1 and attaching the installer as a GitHub Release remain pending manual upload by the user.",
+                      "summary": "NOVA 8.1.0 has been freshly packaged as the Windows x64 NSIS installer dist/NOVA-8.1.0-x64.exe (239,530,300 bytes) with a corresponding blockmap and unpacked application. The installed payload contains NOVA-CLI.exe, and the compiled installer hook publishes its path through the per-user NOVA_CLI environment variable. A packaged-CLI smoke test passed. Release signing and GitHub publication remain separate release operations.",
                       "rationale": "The user wants non-developers to obtain a complete pre-built Windows installer directly from the repository's GitHub Releases page while retaining self-build instructions for developers.",
                       "created_at": "2026-09-21T14:04:33.937Z",
-                      "modified_at": "2026-09-21T14:28:13.055Z",
+                      "modified_at": "2026-09-24T07:13:31.727Z",
                       "children": [],
                       "links": []
                     }
@@ -268,10 +268,10 @@
                     "user"
                   ],
                   "main_tag": "tool-development",
-                  "summary": "NOVA release 8.0.1 provides the complete application branding. The package, executable, installer, window titles, AI-assistant identity, CLI help, and project instructions use NOVA, Networked Organization & Visualization Assistant. The supplied icon is used for application windows and the Windows executable. At startup, the frameless splash is created at the earliest Electron-ready point; application services and the main window begin loading only after the splash is visible, and the handoff keeps it visible for at least one second. About NOVA is a compact custom dark window containing the icon, full subtitle, release version, Philipp Unger attribution, and philippraven.com link; splash artwork is reserved for startup. Application and branding pages use dark compatible scrollbars. Legacy settings locations are checked once so the rename preserves the last opened project.",
+                  "summary": "NOVA release 8.1.0 provides consistent application branding. The package, executable, installer, window titles, AI-assistant identity, CLI help, and project instructions use NOVA, Networked Organization and Visualization Assistant. The supplied icon is used for application windows and the Windows executable. At startup, the frameless splash is created at the earliest Electron-ready point; application services and the main window begin loading only after the splash is visible, and the handoff keeps it visible for at least one second. About NOVA is a compact custom dark window containing the icon, full subtitle, release version, Philipp Unger attribution, and philippraven.com link; splash artwork is reserved for startup. Application and branding pages use dark compatible scrollbars. Legacy settings locations are checked once so the rename preserves the last opened project.",
                   "rationale": "The finished standalone tool needs one coherent identity and polished dark startup/about surfaces without losing per-user continuity during the product rename.",
                   "created_at": "2026-09-18T11:00:44.762Z",
-                  "modified_at": "2026-09-18T11:24:05.684Z",
+                  "modified_at": "2026-09-24T07:14:03.818Z",
                   "children": [],
                   "links": []
                 }
@@ -1073,10 +1073,10 @@
                 "user"
               ],
               "main_tag": "tool-development",
-              "summary": "Viewer 7.0.0 and schema 7 implement one protected project root whose title and summary are the authoritative project name and description. Existing top-level concepts were migrated unchanged into its children. The root remains expanded, cannot be deleted or reparented, bypasses tag filtering, drives the workspace title, and is editable through the same Inspector and Node Property interfaces as other nodes. UI and assistant creation without another parent produces a main topic beneath this root.",
+              "summary": "Schema 7 implements one protected project root whose title and summary are the authoritative project name and description. Existing top-level concepts were migrated unchanged into its children. The root remains expanded, cannot be deleted or reparented, bypasses tag filtering, drives the workspace title, and is editable through the same Inspector and Node Property interfaces as other nodes. In viewer 8.1.0, clicking the project-information label in the graph HUD selects the root and opens the Inspector. UI and assistant creation without another parent produces a main topic beneath this root.",
               "rationale": "A visible central project node would make project identity editable through the existing node editor and give the graph a natural single origin instead of maintaining separate, currently non-editable metadata.",
               "created_at": "2026-09-16T13:30:59.877Z",
-              "modified_at": "2026-09-16T13:40:15.497Z",
+              "modified_at": "2026-09-24T07:13:27.680Z",
               "children": [],
               "links": []
             }
@@ -1094,10 +1094,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "The distributed AGENTS.md is a compact, deployment-portable schema-7 guide limited to mind-map creation, semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. Its Project CLI section directs automation to the headless NOVA-CLI.exe sidecar, explicitly notes that it avoids Electron and Chromium and remains usable with ELECTRON_RUN_AS_NODE, and gives npm.cmd run cli as the source-checkout fallback. It contains no application source paths, release engineering, UI implementation, or performance-development instructions. Deterministic project creation and structural correctness belong to the packaged validator and CLI.",
+          "summary": "The distributed AGENTS.md is a compact, deployment-portable schema-7 guide limited to mind-map creation, semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. Its Project CLI section directs automation to the headless NOVA-CLI.exe sidecar, documents the installer-provided per-user NOVA_CLI absolute-path variable for discovery, explicitly notes that the CLI avoids Electron and Chromium and remains usable with ELECTRON_RUN_AS_NODE, and gives npm.cmd run cli as the source-checkout fallback. It contains no application source paths, release engineering, UI implementation, or performance-development instructions. Deterministic project creation and structural correctness belong to the packaged validator and CLI.",
           "rationale": "A project-maintenance AI needs the storage model and research semantics but not application-development context; removing that material reduces prompt cost and prevents unusable source commands in executable-only deployments.",
           "created_at": "2026-09-11T00:00:00.000Z",
-          "modified_at": "2026-09-22T11:02:42.589Z",
+          "modified_at": "2026-09-24T07:13:28.697Z",
           "children": [],
           "links": [
             {
@@ -1136,10 +1136,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "NOVA release 8.0.1 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, repository-default nova.json project, README, and portable AGENTS.md instructions. nova.json is a conventional default rather than a required filename; every explicit project path remains supported. The packaged instructions direct external agents to the standalone NOVA-CLI.exe headless sidecar and retain npm.cmd run cli only as a source-checkout fallback. The product remains NOVA (Networked Organization & Visualization Assistant), while schema 7 remains format-compatible. The untouched Python viewer remains a legacy schema-4 tool and is not an authority for or writer of schema 7.",
+          "summary": "NOVA release 8.1.0 and map schema 7 are coordinated across the Electron package, validator, renderer defaults, migration helper, repository-default nova.json project, README, and portable AGENTS.md instructions. The 8.1.0 UI and installer changes remain schema-compatible. nova.json is a conventional default rather than a required filename; every explicit project path remains supported. Packaged instructions direct external agents to the standalone NOVA-CLI.exe sidecar through the installer-provided NOVA_CLI environment variable and retain npm.cmd run cli as a source-checkout fallback. The product remains NOVA, Networked Organization and Visualization Assistant.",
           "rationale": "The viewer, canonical map format, and maintenance instructions must evolve together so UI or data changes do not silently make the documented contract inaccurate.",
           "created_at": "2026-09-15T14:47:10.222Z",
-          "modified_at": "2026-09-22T11:02:42.741Z",
+          "modified_at": "2026-09-24T07:13:29.703Z",
           "children": [
             {
               "id": "mindmap-versioning-rules",
@@ -1172,10 +1172,10 @@
                 "derived-from-context"
               ],
               "main_tag": "tool-development",
-              "summary": "NOVA requires exactly schema 7 and rejects obsolete or newer map schemas instead of silently rewriting incompatible data. A non-empty viewer_version is required and every save writes release 8.0.1. The branding and startup-timing release does not change the schema. The explicit schema-6-to-7 migration creates the project root without changing existing node IDs or semantic links.",
+              "summary": "NOVA requires exactly schema 7 and rejects obsolete or newer map schemas instead of silently rewriting incompatible data. A non-empty viewer_version is required and every save writes release 8.1.0. The graph project-label interaction and CLI installer-discovery release does not change the schema. The explicit schema-6-to-7 migration creates the project root without changing existing node IDs or semantic links.",
               "rationale": "The breaking development-phase redesign deliberately omits backward compatibility, so incompatible maps must fail safely rather than risk partial or destructive edits.",
               "created_at": "2026-09-14T00:00:00.000Z",
-              "modified_at": "2026-09-18T11:24:34.145Z",
+              "modified_at": "2026-09-24T07:13:30.713Z",
               "children": [],
               "links": []
             },
@@ -1733,8 +1733,7 @@
                 "component": "assistant",
                 "enablePopout": true
               }
-            ],
-            "active": true
+            ]
           },
           {
             "type": "row",
@@ -1753,7 +1752,8 @@
                     "component": "inspector",
                     "enablePopout": true
                   }
-                ]
+                ],
+                "active": true
               },
               {
                 "type": "tabset",

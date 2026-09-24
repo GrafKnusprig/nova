@@ -161,6 +161,8 @@ NOVA-CLI.exe get --project .\my-research-project.json --id <node-id>
 
 `NOVA-CLI.exe` is the installer's headless automation sidecar: it does not initialize Electron or Chromium and remains independent of `ELECTRON_RUN_AS_NODE`. `NOVA.exe cli ...` remains available for compatibility in normal desktop environments. The CLI also supports project creation, node creation and updates, moves, deletion, semantic links, LLM context, project instructions, and custom tag definitions. Every operation validates before and after mutation and emits machine-readable JSON.
 
+The installer sets the per-user `NOVA_CLI` environment variable to the sidecar's absolute path. New agent or terminal processes can therefore invoke it in PowerShell as `& $env:NOVA_CLI validate --project .\my-research-project.json` without knowing NOVA's installation directory.
+
 ## The short version
 
 > NOVA is a memory layer for work that has structure.

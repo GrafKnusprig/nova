@@ -371,9 +371,20 @@ button {
   background: rgba(9, 15, 25, 0.78);
   font-size: 0.68rem;
 }
-.graph-hud strong {
+.graph-project-link {
+  padding: 0;
+  border: 0;
   color: #d9f7f9;
+  background: transparent;
   font-size: 0.73rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.graph-project-link:hover,
+.graph-project-link:focus-visible {
+  color: #75dce3;
+  text-decoration: underline;
 }
 .panel-wrapper {
   position: relative;

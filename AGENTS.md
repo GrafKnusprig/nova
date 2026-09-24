@@ -134,10 +134,13 @@ with `supersedes`.
 
 Use the packaged headless CLI instead of editing recursive JSON. On Windows
 PowerShell, invoke `& ".\NOVA-CLI.exe" <command> --project <project-file.json>`;
-use the actual sidecar path supplied with the release. `NOVA-CLI.exe` does not
-start Electron or Chromium and remains usable when `ELECTRON_RUN_AS_NODE` is
-set by an automation environment. In a source checkout where the packaged
-sidecar is unavailable, use
+installed releases also expose the absolute sidecar path in the per-user
+`NOVA_CLI` environment variable, so agents can invoke
+`& $env:NOVA_CLI <command> --project <project-file.json>`. A newly installed
+variable is visible to processes started after installation. `NOVA-CLI.exe`
+does not start Electron or Chromium and remains usable when
+`ELECTRON_RUN_AS_NODE` is set by an automation environment. In a source
+checkout where the packaged sidecar is unavailable, use
 `npm.cmd run cli -- <command> --project <project-file.json>`.
 
 Every command requires `--project <project-file.json>`, emits JSON, and returns a

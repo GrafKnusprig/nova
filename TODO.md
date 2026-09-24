@@ -1,6 +1,8 @@
 # Open TODOs, issues and ideas
 
 ## Future work / ideas
+- license under MIT license and get certificate for the app
+- establish github build pipeline with signpath foundation code-signing certificate
 
 ### Local offline AI context and better database
 - local memory first approach using sqlite
@@ -19,6 +21,3 @@
 		- problem: what if the information gets categorized differently than last time? worst case information duplication happens and linking gets messed up. very bad.
 		- also cross-references between topics cannot be done that way
 	- maybe the git repo has a better solution for that and can directly be used in the nova project
-
-## TODO
-- clicking on the project info label in the graph panel should select the root node and open it in the inspector

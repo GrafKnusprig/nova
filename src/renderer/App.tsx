@@ -460,6 +460,7 @@ function GraphPanel({
   onSelect,
   onView,
   onOpenNode,
+  onOpenProject,
   onShowAll,
   onRelayoutHandled,
   onFitHandled,
@@ -472,6 +473,7 @@ function GraphPanel({
   onSelect(id?: string): void;
   onView(view: MapDocument["view"]): void;
   onOpenNode(id: string): void;
+  onOpenProject(): void;
   onShowAll(): void;
   onRelayoutHandled(): void;
   onFitHandled(): void;
@@ -1245,7 +1247,13 @@ function GraphPanel({
         </button>
       </div>
       <div className="graph-hud">
-        <strong>{projectRoot(document).title}</strong>
+        <button
+          className="graph-project-link"
+          title="Open project information in the Inspector"
+          onClick={onOpenProject}
+        >
+          {projectRoot(document).title}
+        </button>
         <span>
           {nodes.length}/{all.length} nodes · {selected.size} selected ·{" "}
           {Math.round(zoom * 100)}%
@@ -1511,6 +1519,7 @@ function Panel({
   onRelayoutHandled,
   onFitHandled,
   openNodeProperty,
+  onOpenProject,
   onShowAll,
 }: {
   id: PanelId;
@@ -1537,6 +1546,7 @@ function Panel({
   onRelayoutHandled(): void;
   onFitHandled(): void;
   openNodeProperty(id: string): void;
+  onOpenProject(): void;
   onShowAll(): void;
 }) {
   const all = flatten(document.nodes);
@@ -1560,6 +1570,7 @@ function Panel({
           applyDocument({ ...document, view }, undefined, false)
         }
         onOpenNode={openNodeProperty}
+        onOpenProject={onOpenProject}
         onShowAll={onShowAll}
         onRelayoutHandled={onRelayoutHandled}
         onFitHandled={onFitHandled}
@@ -2106,6 +2117,10 @@ export function App() {
       onRelayoutHandled={() => setRelayoutToken(0)}
       onFitHandled={() => setFitToken(0)}
       openNodeProperty={openNodeProperty}
+      onOpenProject={() => {
+        selectNode(document.project.root_node_id);
+        openPanel("inspector");
+      }}
       onShowAll={showAllNodes}
     />
   );

@@ -1,6 +1,6 @@
 {
   "name": "nova",
-  "version": "8.0.1",
+  "version": "8.1.0",
   "private": true,
   "description": "NOVA — Networked Organization & Visualization Assistant.",
   "author": "Philipp Unger",
@@ -64,6 +64,9 @@
       "target": "nsis",
       "icon": "images/NOVA_icon.png",
       "executableName": "NOVA"
+    },
+    "nsis": {
+      "include": "scripts/installer.nsh"
     }
   }
 }
