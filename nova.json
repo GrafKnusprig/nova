@@ -268,10 +268,10 @@
                     "user"
                   ],
                   "main_tag": "tool-development",
-                  "summary": "NOVA release 8.4.0 provides consistent application branding across the package, executables, installer, windows, AI Assistant, CLI, project instructions, splash, and About dialog. The supplied icon is used for application windows and the Windows executable. Startup shows the frameless splash before application services and keeps it visible for at least one second. About NOVA shows the icon, full subtitle, release version, attribution, and project link. Legacy settings locations remain supported so upgrades preserve the last opened project.",
+                  "summary": "NOVA release 8.4.0 provides consistent application branding across the package, executables, installer, windows, AI Assistant, CLI, project instructions, splash, and About dialog. The supplied icon is used for application windows and the Windows executable. Startup shows the frameless splash before application services, keeps it visible for at least one second, and displays the authoritative release version in its bottom-right corner. The main native window title also includes that release version and prevents the renderer page title from overwriting it. About NOVA shows the icon, full subtitle, release version, attribution, and project link. Legacy settings locations remain supported so upgrades preserve the last opened project.",
                   "rationale": "The finished standalone tool needs one coherent identity and polished dark startup/about surfaces without losing per-user continuity during the product rename.",
                   "created_at": "2026-09-18T11:00:44.762Z",
-                  "modified_at": "2026-09-24T08:40:16.220Z",
+                  "modified_at": "2026-09-25T09:58:30.713Z",
                   "children": [],
                   "links": []
                 }
@@ -1720,10 +1720,10 @@
         -796.347452869246
       ]
     },
-    "zoom": 0.2983649395282541,
+    "zoom": 0.21295449772063055,
     "viewport": [
-      -87.45078199518485,
-      -8.510102974870122
+      -75.9555838934046,
+      5.856194902513047
     ],
     "layout_mode": "relations",
     "workspace": {
