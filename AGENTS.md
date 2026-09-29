@@ -63,6 +63,28 @@ link { target, relation }
 
 ## Knowledge quality and research integrity
 
+Apply these admission and structure rules strictly:
+
+- **Scientific relevance test:** Every non-root node must contain a question,
+  idea, method, evidence, result, interpretation, limitation, decision, or
+  future research task. Implementation or documentation is eligible only when
+  it conveys one of these forms of knowledge.
+- **No activity-log nodes:** Activities such as "created report", "updated
+  script", or "generated figures" are not standalone knowledge.
+- **Artifact rule:** Mention files only as provenance within the scientific node
+  they support; do not create nodes whose main purpose is cataloguing artifacts.
+- **Atomic nodes:** When distinct claims exist, keep methods, results,
+  interpretations, and limitations in separate nodes instead of combining them
+  in one summary.
+- **Duplicate check:** Search existing nodes before creating one. Extend or link
+  an existing node when it already represents the knowledge.
+- **Relationship requirement:** A new research node should normally connect to
+  a question, method, evidence, or decision through hierarchy or a semantic
+  link.
+- **Periodic audit:** Flag for review nodes whose main purpose is documentation,
+  implementation history, or task completion; retain them only if they pass the
+  scientific relevance test.
+
 Capture meaningful implementations, decisions and rationale, observations,
 ideas, sources, questions, hypotheses, methods, experiments, results,
 interpretations, findings, constraints, issues, failures, limitations, TODOs,

@@ -1112,10 +1112,10 @@
             "user"
           ],
           "main_tag": "tool-development",
-          "summary": "The canonical AGENTS.md is a compact, deployment-portable schema-7 guide for semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. NOVA 8.3.0 installs it beside the executables and initializes a project-local copy automatically for new desktop and CLI projects. Existing or legacy projects can replace their local copy through File > Init AGENTS.md in Project. The integrated Assistant discovers applicable AGENTS.md files from the active project directory upward, so project-local initialization makes the complete instruction contract available consistently. Deterministic project creation and structural correctness remain enforced by the validator and CLI.",
+          "summary": "The canonical AGENTS.md is a compact, deployment-portable schema-7 guide for semantic interpretation, safe packaged-CLI operations, and research-quality maintenance. Its admission rules require scientifically relevant non-root nodes, atomic separation of distinct claims, rejection of activity-log and artifact-catalog nodes, duplicate searches, normal research relationships, and periodic review of documentation or implementation-history nodes. NOVA 8.3.0 installs it beside the executables and initializes a project-local copy automatically for new desktop and CLI projects. Existing or legacy projects can replace their local copy through File > Init AGENTS.md in Project. The integrated Assistant discovers applicable AGENTS.md files from the active project directory upward, so project-local initialization makes the complete instruction contract available consistently. Deterministic project creation and structural correctness remain enforced by the validator and CLI.",
           "rationale": "A project-maintenance AI needs the storage model and research semantics but not application-development context; removing that material reduces prompt cost and prevents unusable source commands in executable-only deployments.",
           "created_at": "2026-09-11T00:00:00.000Z",
-          "modified_at": "2026-09-24T08:06:45.822Z",
+          "modified_at": "2026-09-29T09:48:27.455Z",
           "children": [],
           "links": [
             {
