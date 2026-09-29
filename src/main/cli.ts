@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { addLlmInstruction, changeProjectLink, children, createProjectFile, createProjectNode, defineProjectTag, deleteProjectNode, findNode, flattenNodes, generateUniqueId, moveProjectNode, mutateProject, nodes, projectRoot, projectRootId, readProject, removeLlmInstruction, removeProjectTagDefinition, setLlmContextSummary, stringValue, updateProjectNode, VIEWER_VERSION } from "./project";
 import { initializeProjectAgents } from "./agentsFile";
+import { auditProject } from "./audit";
 
 type Options = Record<string, string | boolean>;
 const HELP = `NOVA CLI ${VIEWER_VERSION}
@@ -12,6 +13,7 @@ Usage: NOVA-CLI.exe <command> --project <project-file.json> [options]
 Commands:
   init         Create a new schema-7 project file. Options: --name, --summary, --summary-file
   validate     Validate a project and report its root, node count, and link count
+  audit        Review knowledge quality and report non-mutating candidate findings
   id           Generate a collision-checked UUID for a project
   list         List compact node records. Optional: --parent <id>
   get          Read one complete node subtree. Required: --id
@@ -44,6 +46,7 @@ async function execute(command: string, options: Options): Promise<unknown> {
   const filePath = projectPath(options);
   if (command === "init") { const document = await createProjectFile(filePath, option(options, "name"), await textOption(options, "summary")); const agents = await initializeProjectAgents(filePath); const root = projectRoot(document); return { ok: true, command, project: filePath, agents, root_node_id: root.id, name: root.title }; }
   if (command === "validate") { const { document } = await readProject(filePath); const all = flattenNodes(nodes(document)), links = all.reduce((sum, node) => sum + (node.links as unknown[]).length, 0), root = projectRoot(document); return { ok: true, command, project: filePath, schema: document.version, viewer_version: document.viewer_version, root_node_id: root.id, name: root.title, node_count: all.length, link_count: links }; }
+  if (command === "audit") { const { document } = await readProject(filePath); return { ok: true, command, project: filePath, ...auditProject(document) }; }
   if (command === "id") { const { document } = await readProject(filePath); return { ok: true, command, project: filePath, id: generateUniqueId(document) }; }
   if (command === "list") { const { document } = await readProject(filePath); const parentId = option(options, "parent"), entries = parentId ? children(findNode(nodes(document), parentId) ?? (() => { throw new Error(`Node ${parentId} does not exist.`); })()).map((node) => ({ ...node, parentId, depth: flattenNodes(nodes(document)).find((entry) => entry.id === parentId)!.depth + 1 })) : flattenNodes(nodes(document)); return { ok: true, command, project: filePath, nodes: entries.map(compact) }; }
   if (command === "get") { const { document } = await readProject(filePath), id = required(options, "id"), node = findNode(nodes(document), id); if (!node) throw new Error(`Node ${id} does not exist.`); return { ok: true, command, project: filePath, node }; }

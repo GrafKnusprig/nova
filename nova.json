@@ -123,8 +123,27 @@
                       "summary": "Viewer 8.3.0 packages the genuinely headless NOVA-CLI.exe automation sidecar beside NOVA.exe and exposes its absolute path through the per-user NOVA_CLI environment variable. Its init command creates both the schema-7 project JSON and a sibling AGENTS.md from the installed canonical template, and reports both paths as JSON. The CLI supports validation, UUID generation, node and link maintenance, LLM context, instructions, and tag definitions without Electron or Chromium and remains unaffected by ELECTRON_RUN_AS_NODE. GUI and CLI operations share schema validation, protected-root rules, timestamps, cleanup, atomic replacement, and stale-revision detection. Packaged Windows smoke tests verify AGENTS initialization, clean JSON, clean exit, and no leftover processes.",
                       "rationale": "External agents need a deterministic CLI that exits cleanly in restricted automation environments without dialogs or orphaned Electron processes, while retaining a compatibility command for ordinary desktop shells.",
                       "created_at": "2026-09-17T08:10:37.458Z",
-                      "modified_at": "2026-09-24T08:06:44.737Z",
-                      "children": [],
+                      "modified_at": "2026-09-29T10:06:54.871Z",
+                      "children": [
+                        {
+                          "id": "b161012b-d9c8-4f84-9c58-ce04b85da3d6",
+                          "title": "Knowledge-quality audit command",
+                          "tags": [
+                            "tool-development",
+                            "project-governance",
+                            "implementation",
+                            "evaluation-validation",
+                            "user"
+                          ],
+                          "main_tag": "project-governance",
+                          "summary": "The read-only CLI audit command scans the complete validated project in one pass and returns machine-readable review candidates without modifying or rejecting the map. High-confidence warnings cover activity-log or artifact-centric nodes, open/proposed tags contradicted by completion language, and strong lexical duplicate candidates. Informational checks cover missing epistemic tags and evidence-bearing root leaves without hierarchy or semantic links. Each finding includes a stable rule ID, severity, involved node IDs and titles, evidence, and a suggested review action. Heuristics deliberately treat hierarchy as a relationship and use conservative thresholds to limit false positives; semantic judgment remains with the user or agent. The canonical AGENTS.md workflow requires audit after knowledge mutations and review of every finding involving a touched node before final validation. Unit tests cover the rules and duplicate threshold, and the full 40-test suite and TypeScript checks pass.",
+                          "rationale": "Agents need a fast, deterministic preflight that makes the knowledge-admission rules actionable and catches likely duplication or classification drift before it accumulates, while avoiding unsafe automatic edits.",
+                          "created_at": "2026-09-29T10:06:54.870Z",
+                          "modified_at": "2026-09-29T10:07:48.459Z",
+                          "children": [],
+                          "links": []
+                        }
+                      ],
                       "links": [
                         {
                           "target": "electron-guid-node-identity",

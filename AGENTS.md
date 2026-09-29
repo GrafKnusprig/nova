@@ -21,8 +21,9 @@ For every interaction:
 5. Preserve rationale, provenance, evidence, dates, alternatives, and epistemic
    status when meaningful. Ask one concise question if an important rationale is
    materially uncertain.
-6. Prefer the project CLI for mutations and validate the result. Do not rewrite
-   the whole file unnecessarily.
+6. Prefer the project CLI for mutations. After changing project knowledge, run
+   `audit`, review every finding involving a node you touched, then run
+   `validate`. Do not rewrite the whole file unnecessarily.
 
 The user should not need to request map maintenance explicitly.
 
@@ -171,6 +172,7 @@ nonzero exit code with a JSON error on failure.
 ```text
 init --name "Project name" [--summary TEXT|--summary-file FILE]
 validate
+audit
 id
 list [--parent ID]
 get --id ID
@@ -191,6 +193,12 @@ instruction-remove --instruction TEXT|--instruction-file FILE
 tag-define --tag TAG --description TEXT|--description-file FILE
 tag-remove --tag TAG
 ```
+
+`audit` is read-only and reports candidate knowledge-quality problems such as
+likely duplicates, activity-log or artifact-centric nodes, status/content
+contradictions, missing epistemic tags, and weakly related root evidence. It
+does not reject or modify a structurally valid project; review its findings in
+context, especially those involving nodes changed in the current interaction.
 
 `init` refuses to overwrite an existing file. `create` generates the UUID and
 timestamps and defaults to a main topic beneath the project root. `update`

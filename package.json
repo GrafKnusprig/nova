@@ -14,7 +14,7 @@
     "build:cli": "node scripts/build-cli.mjs",
     "copy:agents": "copy /Y AGENTS.md dist\\AGENTS.md",
     "build": "npm run typecheck && npm exec -- vite build && npm run copy:agents && npm run build:electron",
-    "test": "npm exec -- tsx --test src/renderer/model.test.ts src/test/assistantPolicy.test.ts src/test/assistantProtocol.test.ts src/test/assistantRecovery.test.ts src/test/project.test.ts",
+    "test": "npm exec -- tsx --test src/renderer/model.test.ts src/test/assistantPolicy.test.ts src/test/assistantProtocol.test.ts src/test/assistantRecovery.test.ts src/test/project.test.ts src/test/audit.test.ts",
     "test:packaged-cli": "node scripts/test-packaged-cli.mjs",
     "cli": "npm exec -- tsx src/main/cli-entry.ts",
     "start": "set ELECTRON_RUN_AS_NODE=&& node_modules\\.bin\\electron.cmd .",
