@@ -4,7 +4,7 @@ import path from "node:path";
 import { createSqliteProjectFile, isNovaDatabasePath, mutateSqliteProject, readSqliteProject, writeSqliteProject } from "./sqliteProject";
 
 export const SCHEMA_VERSION = 7;
-export const VIEWER_VERSION = "8.5.0";
+export const VIEWER_VERSION = "9.0.0";
 export const TOKEN_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const NODE_ID = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 
