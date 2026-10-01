@@ -6,6 +6,8 @@ declare global {
       platform: NodeJS.Platform;
       loadDefault(): Promise<{ path: string; data: unknown }>;
       open(): Promise<{ path: string; data: unknown } | undefined>;
+      importJson(): Promise<{ path: string; data: unknown } | undefined>;
+      exportJson(): Promise<string | undefined>;
       newProject(data: unknown): Promise<string | undefined>;
       save(data: unknown): Promise<string>;
       saveAs(data: unknown): Promise<string | undefined>;

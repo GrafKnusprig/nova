@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld("mindmap", {
   platform: process.platform,
   loadDefault: () => ipcRenderer.invoke("mindmap:load-default"),
   open: () => ipcRenderer.invoke("mindmap:open"),
+  importJson: () => ipcRenderer.invoke("mindmap:import-json"),
+  exportJson: () => ipcRenderer.invoke("mindmap:export-json"),
   newProject: (data: unknown) => ipcRenderer.invoke("mindmap:new", data),
   save: (data: unknown) => ipcRenderer.invoke("mindmap:save", data),
   saveAs: (data: unknown) => ipcRenderer.invoke("mindmap:save-as", data),

@@ -3,13 +3,14 @@ import { promises as fs, watch, type FSWatcher } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { AssistantService, type AssistantConversationStyle, type AssistantInteractionMode, type AssistantMessage, type AssistantMode, type AssistantProvider } from "./assistant";
-import { assertObject, validateMap, VIEWER_VERSION, writeProjectAtomic, type JsonObject } from "./project";
+import { assertObject, readProject, VIEWER_VERSION, writeProjectAtomic, type JsonObject } from "./project";
 import { runCli } from "./cli";
 import { initializeProjectAgents } from "./agentsFile";
+import { exportSqliteToJson, isNovaDatabasePath, migrateJsonToSqlite, readJsonProjectForImport, watchSqliteProject } from "./sqliteProject";
 
 const PANELS = ["graph", "inspector", "outline", "search", "activity", "assistant"] as const;
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
-let currentMapPath: string | undefined; let primaryWindow: BrowserWindow | undefined; let aboutWindow: BrowserWindow | undefined; let mapWatcher: FSWatcher | undefined; let watchTimer: NodeJS.Timeout | undefined; let lastSerialized = "";
+let currentMapPath: string | undefined; let primaryWindow: BrowserWindow | undefined; let aboutWindow: BrowserWindow | undefined; let mapWatcher: FSWatcher | undefined; let watchTimer: NodeJS.Timeout | undefined; let databasePoller: NodeJS.Timeout | undefined; let databaseWatcher: ReturnType<typeof watchSqliteProject> | undefined; let lastSerialized = "";
 
 function serialized(value: JsonObject): string { return JSON.stringify(value); }
 function settingsPath(): string { return path.join(app.getPath("userData"), "settings.json"); }
@@ -17,23 +18,101 @@ function settingsCandidates(): string[] { const appData = app.getPath("appData")
 async function rememberedProjectPath(): Promise<string | undefined> { for (const candidate of settingsCandidates()) try { const value = JSON.parse(await fs.readFile(candidate, "utf8")) as { lastProjectPath?: unknown }; if (typeof value.lastProjectPath !== "string") continue; await fs.access(value.lastProjectPath); const resolved = path.resolve(value.lastProjectPath); if (candidate !== settingsPath()) await rememberProjectPath(resolved); return resolved; } catch { /* Try the next settings location. */ } return undefined; }
 async function rememberProjectPath(filePath: string): Promise<void> { const destination = settingsPath(); await fs.mkdir(path.dirname(destination), { recursive: true }); await fs.writeFile(destination, `${JSON.stringify({ lastProjectPath: path.resolve(filePath) }, null, 2)}\n`, "utf8"); }
 async function startupProjectPath(): Promise<string> {
-  const remembered = await rememberedProjectPath(); if (remembered) return remembered;
-  const candidates = [path.resolve(app.getAppPath(), "..", "..", "nova.json"), path.resolve(process.cwd(), "nova.json"), path.join(path.dirname(app.getPath("exe")), "nova.json")];
+  const remembered = await rememberedProjectPath();
+  if (remembered && isNovaDatabasePath(remembered)) return remembered;
+  if (remembered && path.extname(remembered).toLowerCase() === ".json") {
+    const migratedPath = `${remembered.slice(0, -path.extname(remembered).length)}.nova`;
+    try { await fs.access(migratedPath); return migratedPath; } catch { return remembered; }
+  }
+  const candidates = [path.resolve(app.getAppPath(), "..", "..", "nova.nova"), path.resolve(process.cwd(), "nova.nova"), path.join(path.dirname(app.getPath("exe")), "nova.nova"), path.resolve(app.getAppPath(), "..", "..", "nova.json"), path.resolve(process.cwd(), "nova.json"), path.join(path.dirname(app.getPath("exe")), "nova.json")];
   for (const candidate of [...new Set(candidates)]) try { await fs.access(candidate); return candidate; } catch { /* Try the next conventional location. */ }
-  const result = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); if (result.canceled || !result.filePaths[0]) throw new Error("No knowledge-map project was selected."); return result.filePaths[0];
+  const result = await dialog.showOpenDialog({ title: "Open NOVA database", filters: [{ name: "NOVA database", extensions: ["nova"] }], properties: ["openFile"] }); if (result.canceled || !result.filePaths[0]) throw new Error("No NOVA database was selected."); return result.filePaths[0];
 }
 function broadcastExternal(filePath: string, data: JsonObject, source: "external" | "assistant" = "external"): void { for (const window of BrowserWindow.getAllWindows()) window.webContents.send("mindmap:external-change", { path: filePath, data, source }); }
 function startWatcher(filePath: string): void {
-  mapWatcher?.close(); if (watchTimer) clearTimeout(watchTimer); const directory = path.dirname(filePath), filename = path.basename(filePath).toLowerCase();
-  mapWatcher = watch(directory, (_event, changed) => { if (!changed || changed.toString().toLowerCase() !== filename) return; if (watchTimer) clearTimeout(watchTimer); watchTimer = setTimeout(async () => { try { const raw = await fs.readFile(filePath, "utf8"), data = validateMap(JSON.parse(raw)), next = serialized(data); if (next === lastSerialized) return; lastSerialized = next; broadcastExternal(filePath, data); } catch { /* Editors keep their cached drafts while an external writer is between writes. */ } }, 140); });
+  mapWatcher?.close(); mapWatcher = undefined; databaseWatcher?.close(); databaseWatcher = undefined; if (watchTimer) clearTimeout(watchTimer); if (databasePoller) clearInterval(databasePoller);
+  if (isNovaDatabasePath(filePath)) {
+    databaseWatcher = watchSqliteProject(filePath);
+    databasePoller = setInterval(() => {
+      try {
+        const changed = databaseWatcher?.readChanged();
+        if (!changed || changed.revision === lastSerialized) return;
+        lastSerialized = changed.revision;
+        broadcastExternal(filePath, changed.document);
+      } catch { /* Keep editor drafts while another process has an active write transaction. */ }
+    }, 400);
+    databasePoller.unref();
+    return;
+  }
+  const directory = path.dirname(filePath), filename = path.basename(filePath).toLowerCase();
+  mapWatcher = watch(directory, (_event, changed) => { if (!changed || changed.toString().toLowerCase() !== filename) return; if (watchTimer) clearTimeout(watchTimer); watchTimer = setTimeout(async () => { try { const { document: data, revision: next } = await readProject(filePath); if (next === lastSerialized) return; lastSerialized = next; broadcastExternal(filePath, data); } catch { /* Editors keep their cached drafts while an external writer is between writes. */ } }, 140); });
 }
 function updateProjectMenuState(): void { const item = Menu.getApplicationMenu()?.getMenuItemById("init-project-agents"); if (item) item.enabled = Boolean(currentMapPath); }
-async function readMap(filePath: string) { const resolved = path.resolve(filePath), data = validateMap(JSON.parse(await fs.readFile(resolved, "utf8"))); currentMapPath = resolved; lastSerialized = serialized(data); startWatcher(resolved); await rememberProjectPath(resolved); updateProjectMenuState(); return { path: resolved, data }; }
+function requireNovaPath(filePath: string): string { const resolved = path.resolve(filePath); if (!isNovaDatabasePath(resolved)) throw new Error("NOVA project files must use the .nova extension."); return resolved; }
+async function readMap(filePath: string) { const resolved = path.resolve(filePath), { document: data, revision } = await readProject(resolved); currentMapPath = resolved; lastSerialized = revision; startWatcher(resolved); await rememberProjectPath(resolved); updateProjectMenuState(); return { path: resolved, data }; }
 async function atomicWrite(filePath: string, raw: unknown): Promise<JsonObject> { const expected = currentMapPath && path.resolve(filePath) === path.resolve(currentMapPath) ? lastSerialized : undefined; const data = await writeProjectAtomic(filePath, raw, expected); lastSerialized = serialized(data); return data; }
-async function loadStartupMap() { const filePath = currentMapPath ?? await startupProjectPath(); try { return await readMap(filePath); } catch (error) { const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow; const options: Electron.MessageBoxOptions = { type: "error", title: "Project could not be opened", message: `Could not open ${filePath}`, detail: String(error), buttons: ["Choose another project", "Cancel"], defaultId: 0, cancelId: 1 }; const response = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options); if (response.response !== 0) throw error; const choice = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); if (choice.canceled || !choice.filePaths[0]) throw error; return readMap(choice.filePaths[0]); } }
+async function importJsonProject(sourcePath?: string): Promise<{ path: string; data: JsonObject } | undefined> {
+  let source = sourcePath;
+  if (!source) {
+    const choice = await dialog.showOpenDialog({ title: "Import legacy JSON project", filters: [{ name: "Legacy NOVA JSON", extensions: ["json"] }], properties: ["openFile"] });
+    if (choice.canceled || !choice.filePaths[0]) return undefined;
+    source = choice.filePaths[0];
+  }
+  const suggested = `${source.slice(0, -path.extname(source).length)}.nova`;
+  let resolved: string;
+  while (true) {
+    const destination = await dialog.showSaveDialog({ title: "Create imported NOVA database", defaultPath: suggested, filters: [{ name: "NOVA database", extensions: ["nova"] }] });
+    if (destination.canceled || !destination.filePath) return undefined;
+    resolved = requireNovaPath(destination.filePath);
+    const exists = await fs.access(resolved).then(() => true, (error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    });
+    if (!exists) break;
+    const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow;
+    const options: Electron.MessageBoxOptions = { type: "warning", title: "Database already exists", message: "Import creates a new database and will not overwrite an existing project.", detail: "Choose a different .nova destination.", buttons: ["Choose another location", "Cancel"], defaultId: 0, cancelId: 1 };
+    const response = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options);
+    if (response.response !== 0) return undefined;
+  }
+  try {
+    const document = await readJsonProjectForImport(source);
+    await migrateJsonToSqlite(resolved, document);
+    return readMap(resolved);
+  } catch (error) {
+    const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow;
+    const options: Electron.MessageBoxOptions = { type: "error", title: "JSON project could not be imported", message: "NOVA could not migrate this JSON project to a .nova database.", detail: String(error), buttons: ["OK"] };
+    if (owner) await dialog.showMessageBox(owner, options); else await dialog.showMessageBox(options);
+    throw error;
+  }
+}
+async function exportCurrentProjectJson(): Promise<string | undefined> {
+  if (!currentMapPath) throw new Error("Open a NOVA database before exporting JSON.");
+  if (!isNovaDatabasePath(currentMapPath)) throw new Error("Open or import a .nova database before exporting JSON.");
+  const defaultPath = `${currentMapPath.slice(0, -path.extname(currentMapPath).length)}.json`;
+  const destination = await dialog.showSaveDialog({ title: "Export NOVA database to JSON", defaultPath, filters: [{ name: "NOVA JSON export", extensions: ["json"] }] });
+  if (destination.canceled || !destination.filePath) return undefined;
+  const resolved = path.resolve(destination.filePath);
+  await exportSqliteToJson(currentMapPath, resolved, true);
+  return resolved;
+}
+async function loadStartupMap() {
+  const filePath = currentMapPath ?? await startupProjectPath();
+  if (!isNovaDatabasePath(filePath)) {
+    const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow;
+    const options: Electron.MessageBoxOptions = { type: "info", title: "Import legacy JSON project", message: "NOVA now stores active projects as .nova databases.", detail: `Import ${filePath} to a new .nova database. The JSON source will remain unchanged.`, buttons: ["Import to .nova", "Choose .nova database", "Cancel"], defaultId: 0, cancelId: 2 };
+    const response = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options);
+    if (response.response === 0) { const imported = await importJsonProject(filePath); if (imported) return imported; }
+    else if (response.response === 1) {
+      const choice = await dialog.showOpenDialog({ title: "Open NOVA database", filters: [{ name: "NOVA database", extensions: ["nova"] }], properties: ["openFile"] });
+      if (!choice.canceled && choice.filePaths[0]) return readMap(choice.filePaths[0]);
+    }
+    throw new Error("A .nova database must be opened. Use File > Import JSON to migrate a legacy project.");
+  }
+  try { return await readMap(filePath); } catch (error) { const owner = BrowserWindow.getFocusedWindow() ?? primaryWindow; const options: Electron.MessageBoxOptions = { type: "error", title: "Database could not be opened", message: `Could not open ${filePath}`, detail: String(error), buttons: ["Choose another database", "Cancel"], defaultId: 0, cancelId: 1 }; const response = owner ? await dialog.showMessageBox(owner, options) : await dialog.showMessageBox(options); if (response.response !== 0) throw error; const choice = await dialog.showOpenDialog({ title: "Open NOVA database", filters: [{ name: "NOVA database", extensions: ["nova"] }], properties: ["openFile"] }); if (choice.canceled || !choice.filePaths[0]) throw error; return readMap(choice.filePaths[0]); }
+}
 const assistant = new AssistantService(
   () => currentMapPath,
-  async () => { if (!currentMapPath) throw new Error("No mind-map project is open."); return validateMap(JSON.parse(await fs.readFile(currentMapPath, "utf8"))); },
+  async () => { if (!currentMapPath) throw new Error("No mind-map project is open."); return (await readProject(currentMapPath)).document; },
   async (document) => { if (!currentMapPath) throw new Error("No mind-map project is open."); const data = await atomicWrite(currentMapPath, document); broadcastExternal(currentMapPath, data, "assistant"); },
 );
 
@@ -60,10 +139,12 @@ function chatMessages(value: unknown): AssistantMessage[] { if (!Array.isArray(v
 
 function registerIpc(): void {
   ipcMain.handle("mindmap:load-default", async () => loadStartupMap());
-  ipcMain.handle("mindmap:open", async () => { const result = await dialog.showOpenDialog({ title: "Open knowledge-map project", filters: [{ name: "Mind-map project", extensions: ["json"] }], properties: ["openFile"] }); return result.canceled ? undefined : readMap(result.filePaths[0]); });
-  ipcMain.handle("mindmap:new", async (_event, data: unknown) => { const result = await dialog.showSaveDialog({ title: "Create knowledge-map project", defaultPath: "nova.json", filters: [{ name: "Mind-map project", extensions: ["json"] }] }); if (result.canceled || !result.filePath) return undefined; const resolved = path.resolve(result.filePath); await atomicWrite(resolved, data); await initializeProjectAgents(resolved); currentMapPath = resolved; startWatcher(resolved); await rememberProjectPath(resolved); updateProjectMenuState(); return resolved; });
+  ipcMain.handle("mindmap:open", async () => { const result = await dialog.showOpenDialog({ title: "Open NOVA database", filters: [{ name: "NOVA database", extensions: ["nova"] }], properties: ["openFile"] }); return result.canceled ? undefined : readMap(requireNovaPath(result.filePaths[0])); });
+  ipcMain.handle("mindmap:import-json", async () => importJsonProject());
+  ipcMain.handle("mindmap:export-json", async () => exportCurrentProjectJson());
+  ipcMain.handle("mindmap:new", async (_event, data: unknown) => { const result = await dialog.showSaveDialog({ title: "Create NOVA database", defaultPath: "nova.nova", filters: [{ name: "NOVA database", extensions: ["nova"] }] }); if (result.canceled || !result.filePath) return undefined; const resolved = requireNovaPath(result.filePath); await atomicWrite(resolved, data); await initializeProjectAgents(resolved); currentMapPath = resolved; startWatcher(resolved); await rememberProjectPath(resolved); updateProjectMenuState(); return resolved; });
   ipcMain.handle("mindmap:save", async (_event, data: unknown) => { if (!currentMapPath) throw new Error("Choose a project destination first."); await atomicWrite(currentMapPath, data); return currentMapPath; });
-  ipcMain.handle("mindmap:save-as", async (_event, data: unknown) => { const result = await dialog.showSaveDialog({ title: "Save knowledge-map project", defaultPath: currentMapPath ?? "nova.json", filters: [{ name: "Mind-map project", extensions: ["json"] }] }); if (result.canceled || !result.filePath) return undefined; const resolved = path.resolve(result.filePath); await atomicWrite(resolved, data); currentMapPath = resolved; startWatcher(resolved); await rememberProjectPath(resolved); return resolved; });
+  ipcMain.handle("mindmap:save-as", async (_event, data: unknown) => { const result = await dialog.showSaveDialog({ title: "Save NOVA database as", defaultPath: currentMapPath ?? "nova.nova", filters: [{ name: "NOVA database", extensions: ["nova"] }] }); if (result.canceled || !result.filePath) return undefined; const resolved = requireNovaPath(result.filePath); await atomicWrite(resolved, data); currentMapPath = resolved; startWatcher(resolved); await rememberProjectPath(resolved); return resolved; });
   ipcMain.handle("assistant:status", () => assistant.status());
   ipcMain.handle("assistant:set-provider", (_event, provider: unknown) => assistant.setProvider(assistantProvider(provider)));
   ipcMain.handle("assistant:save-key", (_event, provider: unknown, apiKey: unknown) => assistant.saveKey(assistantProvider(provider), stringValue(apiKey, "API key")));
@@ -78,7 +159,7 @@ function registerIpc(): void {
 function createMenu(): void {
   const panelItems = PANELS.map((panel) => ({ label: panel === "assistant" ? "AI Assistant" : panel[0].toUpperCase() + panel.slice(1), click: () => sendCommand(`show-panel:${panel}`) }));
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: "File", submenu: [{ label: "New", accelerator: "Ctrl+N", click: () => sendCommand("new") }, { label: "Open…", accelerator: "Ctrl+O", click: () => sendCommand("open") }, { label: "Save now", accelerator: "Ctrl+S", click: () => sendCommand("save") }, { label: "Save As…", accelerator: "Ctrl+Shift+S", click: () => sendCommand("save-as") }, { type: "separator" }, { id: "init-project-agents", label: "Init AGENTS.md in Project", enabled: Boolean(currentMapPath), click: () => void initAgentsFromMenu() }, { type: "separator" }, { role: "quit" }] },
+    { label: "File", submenu: [{ label: "New", accelerator: "Ctrl+N", click: () => sendCommand("new") }, { label: "Open…", accelerator: "Ctrl+O", click: () => sendCommand("open") }, { label: "Import JSON…", click: () => sendCommand("import-json") }, { label: "Export JSON…", click: () => sendCommand("export-json") }, { label: "Save now", accelerator: "Ctrl+S", click: () => sendCommand("save") }, { label: "Save As…", accelerator: "Ctrl+Shift+S", click: () => sendCommand("save-as") }, { type: "separator" }, { id: "init-project-agents", label: "Init AGENTS.md in Project", enabled: Boolean(currentMapPath), click: () => void initAgentsFromMenu() }, { type: "separator" }, { role: "quit" }] },
     { label: "Edit", submenu: [{ label: "Undo", accelerator: "Ctrl+Z", click: () => sendCommand("undo") }, { label: "Redo", accelerator: "Ctrl+Y", click: () => sendCommand("redo") }, { type: "separator" }, { role: "cut" }, { role: "copy" }, { role: "paste" }, { role: "selectAll" }] },
     { label: "Node", submenu: [{ label: "Add main topic", accelerator: "Ctrl+Shift+N", click: () => sendCommand("add-main-topic") }, { label: "Add child node", accelerator: "Ctrl+Alt+N", click: () => sendCommand("add-child") }, { label: "Delete selected", accelerator: "Delete", click: () => sendCommand("delete-selected") }, { type: "separator" }, { label: "Expand selected", click: () => sendCommand("expand-selected") }, { label: "Collapse selected", click: () => sendCommand("collapse-selected") }] },
     { label: "View", submenu: [{ label: "Panels", submenu: [...panelItems, { type: "separator" }, { label: "Reset panel arrangement", click: () => sendCommand("reset-workspace") }] }, { type: "separator" }, { label: "Fit graph", accelerator: "Ctrl+0", click: () => sendCommand("fit-graph") }, { label: "Re-layout graph", accelerator: "Ctrl+L", click: () => sendCommand("relayout-graph") }, { label: "Show all nodes", click: () => sendCommand("show-all") }, { label: "Collapse to main topics", click: () => sendCommand("collapse-main-topics") }, { type: "separator" }, { role: "togglefullscreen" }, { role: "toggleDevTools" }] },
@@ -104,5 +185,5 @@ if (cliIndex >= 0) {
   });
 } else {
   app.setName("NOVA");
-  app.whenReady().then(() => { nativeTheme.themeSource = "dark"; if (process.platform === "win32") app.setAppUserModelId("com.philippraven.nova"); createSplashWindow((splash, shownAt) => { registerIpc(); createMenu(); createMainWindow(splash, shownAt); }); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); }); app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => mapWatcher?.close());
+  app.whenReady().then(() => { nativeTheme.themeSource = "dark"; if (process.platform === "win32") app.setAppUserModelId("com.philippraven.nova"); createSplashWindow((splash, shownAt) => { registerIpc(); createMenu(); createMainWindow(splash, shownAt); }); app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); }); }); app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); }); app.on("before-quit", () => { mapWatcher?.close(); databaseWatcher?.close(); if (databasePoller) clearInterval(databasePoller); });
 }

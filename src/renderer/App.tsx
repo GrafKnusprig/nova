@@ -1708,6 +1708,9 @@ export function App() {
   );
   const load = useCallback(
     (result: { path: string; data: unknown }, source = "Opened") => {
+      saveGeneration.current += 1;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      pendingSave.current = undefined;
       navigationRun.current += 1;
       const incoming = result.data as MapDocument;
       const fitted = {
@@ -1925,6 +1928,21 @@ export function App() {
         const current = documentRef.current;
         if (command === "open")
           void window.mindmap.open().then((result) => result && load(result));
+        else if (command === "import-json")
+          void window.mindmap
+            .importJson()
+            .then((result) => result && load(result, "Imported legacy JSON"))
+            .catch((error) => record(`JSON import failed: ${String(error)}`));
+        else if (command === "export-json")
+          void (async () => {
+            try {
+              if (mapPathRef.current) await window.mindmap.save(documentRef.current);
+              const result = await window.mindmap.exportJson();
+              if (result) record(`Exported JSON copy: ${result}`);
+            } catch (error) {
+              record(`JSON export failed: ${String(error)}`);
+            }
+          })();
         else if (command === "new")
           void (async () => {
             try {

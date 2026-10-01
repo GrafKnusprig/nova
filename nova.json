@@ -1,6 +1,6 @@
 {
   "version": 7,
-  "viewer_version": "8.4.0",
+  "viewer_version": "8.5.0",
   "project": {
     "root_node_id": "knowledge-map-viewer"
   },
@@ -8,7 +8,8 @@
     "summary": "This knowledge map is the persistent development record for NOVA, the standalone schema-7 knowledge-map desktop application.",
     "instructions": [
       "Record only knowledge about NOVA product design, architecture, implementation, testing, packaging, documentation, limitations, and future work.",
-      "Do not add content from knowledge-map projects that are opened or maintained with NOVA."
+      "Do not add content from knowledge-map projects that are opened or maintained with NOVA.",
+      "Use plain ASCII text in project database node titles, summaries, rationales, and guidance. Do not use emoji or non-ASCII decorative characters."
     ],
     "tag_definitions": {}
   },
@@ -25,7 +26,7 @@
       "summary": "NOVA (Networked Organization & Visualization Assistant) is a standalone Electron application for creating, viewing, editing, validating, and maintaining schema-7 semantic knowledge maps.",
       "rationale": "This root contains the architecture, implementation history, product decisions, validation evidence, limitations, and future work for NOVA itself.",
       "created_at": "2026-09-15T14:47:10.222Z",
-      "modified_at": "2026-09-15T14:47:10.222Z",
+      "modified_at": "2026-09-30T08:06:14.943Z",
       "children": [
         {
           "id": "electron-knowledge-map-rebuild-plan",
@@ -123,7 +124,7 @@
                       "summary": "Viewer 8.3.0 packages the genuinely headless NOVA-CLI.exe automation sidecar beside NOVA.exe and exposes its absolute path through the per-user NOVA_CLI environment variable. Its init command creates both the schema-7 project JSON and a sibling AGENTS.md from the installed canonical template, and reports both paths as JSON. The CLI supports validation, UUID generation, node and link maintenance, LLM context, instructions, and tag definitions without Electron or Chromium and remains unaffected by ELECTRON_RUN_AS_NODE. GUI and CLI operations share schema validation, protected-root rules, timestamps, cleanup, atomic replacement, and stale-revision detection. Packaged Windows smoke tests verify AGENTS initialization, clean JSON, clean exit, and no leftover processes.",
                       "rationale": "External agents need a deterministic CLI that exits cleanly in restricted automation environments without dialogs or orphaned Electron processes, while retaining a compatibility command for ordinary desktop shells.",
                       "created_at": "2026-09-17T08:10:37.458Z",
-                      "modified_at": "2026-09-29T10:06:54.871Z",
+                      "modified_at": "2026-10-01T11:55:23.503Z",
                       "children": [
                         {
                           "id": "b161012b-d9c8-4f84-9c58-ce04b85da3d6",
@@ -140,6 +141,22 @@
                           "rationale": "Agents need a fast, deterministic preflight that makes the knowledge-admission rules actionable and catches likely duplication or classification drift before it accumulates, while avoiding unsafe automatic edits.",
                           "created_at": "2026-09-29T10:06:54.870Z",
                           "modified_at": "2026-09-29T10:07:48.459Z",
+                          "children": [],
+                          "links": []
+                        },
+                        {
+                          "id": "b67868a0-dbe9-4969-b958-90052ffed4d1",
+                          "title": "Agent search and context CLI prototype",
+                          "tags": [
+                            "implementation",
+                            "tool-development",
+                            "active"
+                          ],
+                          "main_tag": "implementation",
+                          "summary": "The headless JSON-backed NOVA CLI now exposes search --query and context --query, retaining the --project interface so callers do not depend on storage details. Search ranks exact IDs and normalized exact titles first, then title phrase/prefix and lexical matches across title, summary, rationale, tags, and main tag. Optional category scoping narrows detail matches but preserves exact ID/title candidates globally. Results include stable IDs, category, parent path, match reasons, score, and a short summary excerpt.\n\nContext packing returns project identity, root llm_context, a compact direct-category index, the best matching category, global exact duplicate candidates, and compact cross-category lexical candidates. It adds matching node details, ancestors, and bounded hierarchy/semantic-link neighbors within a requested budget. The token count is an explicit JSON-character-divided-by-four estimate, not an exact model tokenizer count; mandatory guidance and exact matches can exceed the requested budget and are reported. The implementation operates on schema-7 JSON today and is an initial lexical prototype, not SQLite-backed or semantic retrieval. The intended contract is to preserve these commands when a SQLite backend and .nova project format are introduced. Root AGENTS.md now explains how IDE agents should request and use these context/search results, inspect papers/methods/evaluation history, and avoid interpreting a map miss as global novelty.\r\n",
+                          "rationale": "IDE agents need a stable CLI contract for global duplicate checks and category-scoped, token-budgeted project context without depending on the storage engine.",
+                          "created_at": "2026-10-01T11:55:23.502Z",
+                          "modified_at": "2026-10-01T11:55:23.502Z",
                           "children": [],
                           "links": []
                         }
@@ -1432,6 +1449,72 @@
               "relation": "part-of"
             }
           ]
+        },
+        {
+          "id": "921629d1-bc1b-436c-a69d-2f041eb7480b",
+          "title": "SQLite project storage and assistant retrieval plan",
+          "tags": [
+            "todo",
+            "tool-development",
+            "implementation"
+          ],
+          "main_tag": "todo",
+          "summary": "Feasibility and implementation direction: SQLite-backed project storage is feasible, but requires replacing whole-document persistence across Electron main, renderer, assistant tools, and CLI. Current schema-7 JSON writes use atomic replacement and stale-revision checks; they detect conflicts but rewrite the full project. SQLite WAL permits concurrent readers alongside a writer while still serializing writers, so use transactions, busy handling, and explicit conflict outcomes.\n\nUse one SQLite database per project as authoritative storage, with versioned migrations and normalized project metadata, nodes, ordered hierarchy, tags, semantic links, LLM context, and view state. Preserve existing stable node IDs, timestamps, hierarchy/order, tags, summaries, rationale, links, context, and view state. Keep JSON import/export as portable interchange and backup, never overwrite source files during migration. Validate before import, import transactionally, verify IDs/counts/endpoints, provide dry-run/report, backup, rollback/recovery, and prove SQLite-to-schema-7 JSON round trips. Keep JSON opening during transition. Electron main owns connections; update renderer state, undo/redo, autosave, view state and conflict handling. Rework CLI around storage interfaces: retain useful node/link/context/tag operations; add import/export/migrate/search; review standalone `id` because `create` returns generated IDs; retain headless JSON output and explicit delete.\n\nCortexaDB repository findings: it is a local embedded memory/retrieval engine, not an agent context manager or LLM. Its Python API's `add` unconditionally inserts; it has no semantic duplicate detection or update-existing behavior. Queries embed the prompt, rank vector candidates (exact cosine or HNSW), optionally expand one hop through outgoing graph edges, and return top-k IDs/scores. It also has collections, metadata filters, importance, temporal retrieval, WAL durability, and concurrent read snapshots. Ollama can provide local embeddings when locally installed and running; OpenAI and Gemini providers are remote. It does not provide local generation, persistent scientific instructions, automatic whole-project context construction, or research-map policy enforcement. CortexaDB alone therefore would not fix NOVA's duplicate-node or forgotten-instruction failures. Its Rust storage engine is an idea source, not a direct dependency to embed.\n\nNOVA's assistant needs an explicit context and write-policy layer: always inject project `llm_context` instructions (including scientific-research rather than plain-protocol guidance) as mandatory system-level guidance on relevant calls. Search globally before proposing creation using exact/normalized IDs and titles, lexical search, and optionally local semantic ranking. Pack a token-budgeted candidate set with each candidate's ancestors, useful descendants, and inbound/outbound semantic links; hierarchy should expand context, not be the sole classifier. Prefer stable-ID update/move/link operations, and require review for ambiguous duplicates. Keep full-map context available when it fits and bounded retrieval for larger maps. Start with deterministic FTS5 and graph queries; evaluate local embeddings only if measured retrieval quality warrants them. The documented CortexaDB BFS follows outgoing edges, so NOVA retrieval must handle hierarchy and inbound as well as outbound links.\n\nFor validation, cover migration fidelity/rollback, round-trip export, constraints and links, GUI/CLI multi-process readers/writers and conflict behavior, backup/restore, assistant retrieval and duplicate cases, and packaged CLI database access. Benchmark realistic maps before vector infrastructure. Update packaging, user docs, and AGENTS instructions for database location, migration guarantees, backups, restore, and CLI path semantics.\n\nReferences reviewed: https://github.com/anaslimem/CortexaDB; https://www.sqlite.org/wal.html; https://github.com/sqliteai/sqlite-memory; https://github.com/spences10/mcp-memory-sqlite. These inform design review and are not NOVA benchmark evidence.\r\n",
+          "rationale": "The user wants offline-first scalable project storage, reliable assistant categorization and duplicate detection, preserved cross-topic links, a safe existing-map migration, and a CLI whose operations still match the data model.",
+          "created_at": "2026-09-30T08:06:14.941Z",
+          "modified_at": "2026-09-30T08:29:21.342Z",
+          "children": [
+            {
+              "id": "e5c9fae1-4145-44de-b31d-00acbdf30d9a",
+              "title": "Task-scoped mind-map context for IDE agents",
+              "tags": [
+                "idea",
+                "tool-development",
+                "implementation"
+              ],
+              "main_tag": "idea",
+              "summary": "The IDE agent should treat repository `AGENTS.md` as operating instructions and the mind-map database as the authoritative source for NOVA project knowledge. Context retrieval should be category-first to limit tokens: always load compact mandatory guidance and project identity, then a compact index of categories/main topics and node IDs/titles/tags. Select the best category for the task, retrieve that category's node details and relevant ancestors/descendants, then expand through semantic links to related nodes in other categories only as needed and within a token budget. Do not assume the chosen category contains every relevant fact: before proposing a create, run a cheap global duplicate/candidate check over all node IDs and titles and searchable summaries (exact/normalized title plus lexical index, optionally semantic ranking). Fetch full details only for plausible candidates, including matches outside the selected category. Prefer updating by stable ID; request review when candidate matches or category placement are ambiguous. This supports a broad map without putting every node summary into every IDE prompt. NOVA's current JSON/CLI does not yet implement this indexed, token-budgeted retrieval policy; this is a future design requirement.\r\n",
+              "rationale": "The user wants IDE agents to use the mind map as NOVA's durable context while avoiding unnecessary full-map token consumption and retaining scientific-map guidance.",
+              "created_at": "2026-09-30T08:21:50.834Z",
+              "modified_at": "2026-09-30T08:24:15.909Z",
+              "children": [],
+              "links": []
+            },
+            {
+              "id": "b45be31c-8b3b-4b8e-9b00-e113a2534237",
+              "title": "Database-aware CLI and AGENTS contract",
+              "tags": [
+                "idea",
+                "tool-development",
+                "implementation"
+              ],
+              "main_tag": "idea",
+              "summary": "Database-aware IDE agents will need a stable retrieval contract in both the headless CLI and `AGENTS.md`. Do not expose SQL as the normal agent interface. Preserve low-level node commands (`get`, `create`, `update`, `move`, link operations) for exact record work, and add focused retrieval operations rather than many overlapping commands. Proposed minimum: `search --query TEXT [--category ID] [--limit N]` must search globally by exact/normalized ID and title before lexical indexed fields; category filters rank/narrow detailed results but must not hide global exact duplicate candidates. `context --query TEXT [--category ID] [--token-budget N] [--related-depth N]` returns mandatory project guidance, compact category index, selected category's ranked node excerpts and hierarchy, linked relevant records, and cross-category duplicate candidates, with stable IDs and match reasons. `categories` may be unnecessary if `context` returns category IDs/titles/short summaries; add it only if an independently useful category browsing workflow exists. Preserve `list --parent` and `get --id` for deterministic navigation/expansion. The context packer must be deterministic, budget-aware, and report omissions/truncation; exact-title candidates must not be dropped by semantic ranking. Token counting should use the configured model tokenizer when available or label a conservative estimate.\n\nUpdate the canonical `AGENTS.md` and the project-local initialization template to define the agent workflow: read mandatory project guidance; request a compact context pack for the task; select a category but treat it as a retrieval starting point; search globally for exact/normalized duplicate candidates before creation; fetch full candidate nodes with stable IDs; update existing knowledge when appropriate; create only genuinely new knowledge; add semantic links across categories when supported; review ambiguous matches/placement; after a mutation verify its result and use returned IDs; never write SQLite directly or use raw SQL; use CLI `--project` against the database path; understand JSON import/export and migration status; and keep all mutations within the current project. Document whether a DB is already migrated, avoid modifying a legacy JSON source during migration, and preserve explicit destructive-operation confirmation. The CLI and AGENTS instructions must ship together in the application and remain usable by IDE agents without an Electron GUI.\r\n",
+              "rationale": "IDE agents need predictable database retrieval and safe mutation instructions after NOVA migrates project storage from JSON to SQLite.",
+              "created_at": "2026-09-30T08:29:21.340Z",
+              "modified_at": "2026-10-01T11:41:44.104Z",
+              "children": [
+                {
+                  "id": "95378925-0936-474e-add7-fd3b9994b6ea",
+                  "title": "Paper-method implementation retrieval workflow",
+                  "tags": [
+                    "method",
+                    "tool-development",
+                    "implementation"
+                  ],
+                  "main_tag": "method",
+                  "summary": "For a request to implement a method from a paper, the IDE agent should follow this knowledge-first sequence before coding:\n1. Read repository AGENTS.md and mandatory project guidance; identify the target paper from DOI/title/authors or ask for the missing citation if the user did not identify it.\n2. Query the global paper/source index by DOI, normalized title, and author/title terms. Fetch likely source nodes and provenance. If no source node is found, state that this means only that the current map has no match; inspect the supplied paper or ask for it rather than claiming the method is novel in the literature.\n3. Search globally for the named method and its aliases, not only the likely category. Retrieve matching method/implementation nodes, links, parent paths, and relevant decisions. Check repository code for an implementation as a separate evidence source.\n4. Search experiment/result/finding nodes and decision nodes linked to the method or paper. Distinguish implemented, proposed, attempted, evaluated, successful, failed, and inconclusive states. Do not infer that a method was tested just because implementation notes exist.\n5. Return a concise evidence-based preflight to the user: paper/source match; prior implementation status and code location; prior trial status and result if recorded; relevant alternatives/limitations; and whether the requested work appears to be new in this project. Clarify uncertain identity or material scope before coding. A map miss is not proof of global novelty.\n6. Implement against the paper's actual method and project conventions. Preserve a source node for the paper, a separate method node, implementation/decision knowledge, and experiment/result/interpretation nodes only when supported. Link them with stable IDs. Do not record experiments or results that were not performed.\n7. Report changes and evidence gaps. If a prior method exists, update/reuse its records rather than duplicating them; if this is a new project method, create the source/method and implementation knowledge in the correct hierarchy and add useful cross-links.\n\nThe future CLI context operation should support a task query that searches paper/source, method, experiment, result, decision, and implementation records across the entire graph, returns compact relevant context plus stable IDs and links, and expands details within a token budget. The agent must be allowed to report \"not found in the map\" as an uncertainty rather than turn absence into a novelty claim. Today this end-to-end database-backed retrieval is not implemented.\r\n",
+                  "rationale": "Paper-based implementation tasks must reuse prior project knowledge, avoid duplicate methods, and distinguish implementation from actual evaluation evidence.",
+                  "created_at": "2026-10-01T11:41:44.103Z",
+                  "modified_at": "2026-10-01T11:41:44.103Z",
+                  "children": [],
+                  "links": []
+                }
+              ],
+              "links": []
+            }
+          ],
+          "links": []
         }
       ],
       "links": []

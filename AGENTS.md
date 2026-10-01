@@ -1,8 +1,75 @@
 # Persistent Project Knowledge Map
 
+## IDE-agent task workflow and retrieval
+
+`AGENTS.md` defines how to work in this repository; the active project file
+(`nova.nova` or legacy `nova.json`) is the authoritative source for NOVA project
+knowledge. Do not load the complete map by default.
+For non-trivial NOVA tasks, request a compact, task-specific context pack first:
+
+```text
+npm.cmd run cli -- context --project nova.nova --query "task description"
+```
+
+The IDE reads this `AGENTS.md` separately. The context pack includes project
+identity, root `llm_context` guidance, and a compact category index, then ranks
+relevant node excerpts. Use its category ID to narrow detail retrieval when
+useful:
+
+```text
+npm.cmd run cli -- context --project nova.nova --query "task description" --category CATEGORY_ID --token-budget 6000
+npm.cmd run cli -- context --project nova.nova --query "architecture-wide task" --scope all --token-budget 16000
+npm.cmd run cli -- search --project nova.nova --query "paper DOI or method name"
+npm.cmd run cli -- get --project nova.nova --id NODE_ID
+```
+
+Category selection is a starting point, not a boundary. Search globally for
+exact IDs and normalized titles before proposing a new node; exact matches
+outside the selected category must remain visible. Fetch plausible matches by
+stable ID, including their parent path and semantic links. If the map has no
+match, say that it was not found in the map; absence is not evidence of global
+novelty. Inspect repository code separately, and inspect or request the paper
+when its identity or method is unclear.
+
+For paper-based implementation tasks, check source, method, implementation,
+decision, experiment, result, and limitation knowledge before coding. Report
+what is already implemented, attempted, or evaluated and what evidence is
+missing. Keep source, method, implementation, experiment, result, and
+interpretation as distinct knowledge where applicable. Never infer an
+experiment or result from an implementation record. Reuse/update existing
+nodes by ID, create only genuinely new project knowledge, link related topics,
+and ask when identity or scope uncertainty would change the implementation.
+
+Use the CLI for project reads and mutations; do not inspect or modify the
+underlying storage directly. Pass the active project path through `--project`.
+During migration, leave the original JSON source intact and use the CLI's
+migration/import/export commands as documented. After map mutations, run
+`audit`, review findings about touched nodes, and run `validate`.
+
+Write project database content in plain ASCII. Do not use emoji or decorative
+non-ASCII characters in node titles, summaries, rationales, or guidance.
+
+The CLI supports both schema-7 JSON and SQLite `.nova` projects. Prefer `.nova`
+for active work. Use `migration-status` to inspect a legacy JSON project,
+`migrate --project old.json --to new.nova` to make a separate database copy,
+`import --project new.nova --from old.json` to create a database from JSON, and
+`export --project new.nova --to backup.json` for a portable export. Migration
+and import accept schema-7 JSON and convert schema-6 JSON to schema 7 in memory;
+they never change the source JSON and refuse an existing destination. Export
+refuses to overwrite an existing JSON file unless `--overwrite` is explicit.
+The `.nova` file is the project database; SQLite may use transient WAL sidecars
+while it is open. Agents must use the CLI and must never access SQLite directly.
+In the desktop app, Open, New, Save, and Save As use `.nova` databases. Use
+File > Import JSON to migrate a legacy JSON project to a new `.nova` file; the
+source stays unchanged. Use File > Export JSON to make a portable copy. If a
+remembered legacy JSON path has a sibling `.nova`, startup opens the database;
+otherwise startup offers the import flow.
+
 ## Purpose and required workflow
 
-`nova.json` is this repository's default project file. A project file may use
+This checkout currently contains the legacy `nova.json`; use the CLI migration
+command to create a separate `nova.nova` database and keep the JSON source. New
+active projects should prefer `.nova`. A project file may use
 any filename; commands always operate on the path passed with `--project`. It is
 a semantic knowledge graph, not a chat transcript. It must remain
 understandable without the conversation that produced it and detailed enough to
@@ -156,24 +223,24 @@ with `supersedes`.
 ## Project CLI
 
 Use the packaged headless CLI instead of editing recursive JSON. On Windows
-PowerShell, invoke `& ".\NOVA-CLI.exe" <command> --project <project-file.json>`;
+PowerShell, invoke `& ".\NOVA-CLI.exe" <command> --project <project-file.json|project.nova>`;
 installed releases also expose the absolute sidecar path in the per-user
 `NOVA_CLI` environment variable, so agents can invoke
-`& $env:NOVA_CLI <command> --project <project-file.json>`. A newly installed
+`& $env:NOVA_CLI <command> --project <project-file.json|project.nova>`. A newly installed
 variable is visible to processes started after installation. `NOVA-CLI.exe`
 does not start Electron or Chromium and remains usable when
 `ELECTRON_RUN_AS_NODE` is set by an automation environment. In a source
 checkout where the packaged sidecar is unavailable, use
-`npm.cmd run cli -- <command> --project <project-file.json>`.
+`npm.cmd run cli -- <command> --project <project-file.json|project.nova>`.
 
-Every command requires `--project <project-file.json>`, emits JSON, and returns a
+Every command requires `--project <project-file.json|project.nova>`, emits JSON, and returns a
 nonzero exit code with a JSON error on failure.
 
 ```text
 init --name "Project name" [--summary TEXT|--summary-file FILE]
 validate
 audit
-id
+id  Generate a collision-checked UUID candidate; this does not reserve it. Prefer create, which returns the created ID.
 list [--parent ID]
 get --id ID
 create --title TEXT [--parent ID] [--tags a,b] [--main-tag TAG]
@@ -186,12 +253,18 @@ move --id ID --parent ID
 delete --id ID --yes
 link-add --source ID --target ID --relation RELATION
 link-remove --source ID --target ID --relation RELATION
+search --query TEXT [--category ID] [--limit N]
+context --query TEXT [--category ID] [--scope category|all] [--token-budget N] [--related-depth N]
 context-get
 context-set --summary TEXT|--summary-file FILE
 instruction-add --instruction TEXT|--instruction-file FILE
 instruction-remove --instruction TEXT|--instruction-file FILE
 tag-define --tag TAG --description TEXT|--description-file FILE
 tag-remove --tag TAG
+migration-status
+migrate --to DATABASE.nova
+import --from SOURCE.json
+export --to DESTINATION.json [--overwrite]
 ```
 
 `audit` is read-only and reports candidate knowledge-quality problems such as
@@ -206,9 +279,16 @@ changes only supplied fields. `delete` is permanent and requires `--yes`; the
 root cannot be deleted or moved. Text-file options are preferred for multiline
 or shell-sensitive content.
 
-The CLI validates before and after mutations, writes atomically, and rejects a
-stale write when the file changed after it was read. If direct JSON editing is
-unavoidable, preserve all application-managed fields and run `validate` afterward.
+The CLI validates before and after mutations and writes SQLite changes in a
+transaction with a stale-revision check. JSON writes remain atomic and reject a
+stale revision. SQLite FTS5 ranks retrieval candidates; global ID and normalized
+title checks still apply, including outside a requested category. Context packs
+include mandatory guidance, category summaries, ranked excerpts, semantic
+neighbors, and explicit omissions. `--scope all` requests the complete map when
+it fits; otherwise it reports omitted IDs and truncation. Token counts are
+approximate. If direct JSON
+editing is unavoidable, preserve all application-managed fields and run
+`validate` afterward.
 
 ## Schema-7 invariants
 

@@ -1,6 +1,6 @@
 {
   "name": "nova",
-  "version": "8.4.0",
+  "version": "8.5.0",
   "private": true,
   "description": "NOVA — Networked Organization & Visualization Assistant.",
   "author": "Philipp Unger",

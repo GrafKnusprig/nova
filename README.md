@@ -154,15 +154,17 @@ The packaged installer is written to `dist/NOVA-<version>-x64.exe`.
 Keep [`AGENTS.md`](AGENTS.md) next to the project file so a compatible IDE agent can discover the schema and maintenance policy. Every CLI command operates on the explicit path you provide—the project filename is yours to choose.
 
 ```powershell
-NOVA-CLI.exe validate --project .\my-research-project.json
-NOVA-CLI.exe audit --project .\my-research-project.json
-NOVA-CLI.exe list --project .\my-research-project.json
-NOVA-CLI.exe get --project .\my-research-project.json --id <node-id>
+NOVA-CLI.exe validate --project .\my-research-project.nova
+NOVA-CLI.exe audit --project .\my-research-project.nova
+NOVA-CLI.exe list --project .\my-research-project.nova
+NOVA-CLI.exe get --project .\my-research-project.nova --id <node-id>
+NOVA-CLI.exe migrate --project .\legacy-project.json --to .\my-research-project.nova
+NOVA-CLI.exe export --project .\my-research-project.nova --to .\my-research-project.json
 ```
 
-`NOVA-CLI.exe` is the installer's headless automation sidecar: it does not initialize Electron or Chromium and remains independent of `ELECTRON_RUN_AS_NODE`. `NOVA.exe cli ...` remains available for compatibility in normal desktop environments. The read-only `audit` command reports review candidates for activity-log or artifact-centric nodes, status/content contradictions, missing epistemic tags, weakly related root evidence, and strong lexical duplicates; it never mutates or rejects a structurally valid project. The CLI also supports project creation, node creation and updates, moves, deletion, semantic links, LLM context, project instructions, and custom tag definitions. Every operation validates before and after mutation and emits machine-readable JSON.
+`NOVA-CLI.exe` is the installer's headless automation sidecar: it does not initialize Electron or Chromium and remains independent of `ELECTRON_RUN_AS_NODE`. `NOVA.exe cli ...` remains available for compatibility in normal desktop environments. The desktop app opens and saves `.nova` databases. Use **File > Import JSON** to migrate a schema-6 or schema-7 `.json` project into a new database; schema 6 is upgraded in memory, the source stays unchanged, and an existing database is never overwritten. Use **File > Export JSON** for a portable copy. The CLI also supports search and bounded context retrieval, project creation, node creation and updates, moves, deletion, semantic links, LLM context, project instructions, and custom tag definitions. Every operation validates before and after mutation and emits machine-readable JSON.
 
-The installer sets the per-user `NOVA_CLI` environment variable to the sidecar's absolute path. New agent or terminal processes can therefore invoke it in PowerShell as `& $env:NOVA_CLI validate --project .\my-research-project.json` without knowing NOVA's installation directory.
+The installer sets the per-user `NOVA_CLI` environment variable to the sidecar's absolute path. New agent or terminal processes can therefore invoke it in PowerShell as `& $env:NOVA_CLI validate --project .\my-research-project.nova` without knowing NOVA's installation directory.
 
 The installer also places the canonical `AGENTS.md` beside `NOVA.exe`. Creating a project in NOVA or with `NOVA-CLI.exe init` copies that guidance into the new project directory. For existing projects, **File → Init AGENTS.md in Project** replaces the project-local file with the installed version.
 

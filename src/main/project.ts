@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { createSqliteProjectFile, isNovaDatabasePath, mutateSqliteProject, readSqliteProject, writeSqliteProject } from "./sqliteProject";
 
 export const SCHEMA_VERSION = 7;
-export const VIEWER_VERSION = "8.4.0";
+export const VIEWER_VERSION = "8.5.0";
 export const TOKEN_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const NODE_ID = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 
@@ -20,8 +21,18 @@ export function flattenNodes(entries: JsonObject[], parentId?: string, depth = 0
 export function findNode(entries: JsonObject[], id: string): JsonObject | undefined { for (const node of entries) { if (node.id === id) return node; const nested = findNode(children(node), id); if (nested) return nested; } return undefined; }
 export function projectRoot(document: JsonObject): JsonObject { const root = findNode(nodes(document), projectRootId(document)); if (!root) throw new Error("Project root node is unavailable."); return root; }
 
+function enforceAscii(value: unknown, location = "project"): void {
+  if (typeof value === "string" && /[^\x00-\x7f]/.test(value)) throw new Error(`${location} contains non-ASCII characters; project database text must use plain ASCII.`);
+  if (typeof value === "string" && /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)) throw new Error(`${location} contains unsupported control characters.`);
+  if (Array.isArray(value)) { value.forEach((entry, index) => enforceAscii(entry, `${location}[${index}]`)); return; }
+  if (value && typeof value === "object") for (const [key, entry] of Object.entries(value)) {
+    if (/[^\x00-\x7f]/.test(key)) throw new Error(`${location} contains a non-ASCII field name.`);
+    enforceAscii(entry, `${location}.${key}`);
+  }
+}
+
 export function validateMap(value: unknown): JsonObject {
-  assertObject(value, "Mind-map root"); if (value.version !== SCHEMA_VERSION) throw new Error(`Unsupported schema ${String(value.version)}; schema ${SCHEMA_VERSION} is required.`); if (typeof value.viewer_version !== "string" || !value.viewer_version.trim()) throw new Error("viewer_version must be a non-empty string.");
+  assertObject(value, "Mind-map root"); enforceAscii(value); if (value.version !== SCHEMA_VERSION) throw new Error(`Unsupported schema ${String(value.version)}; schema ${SCHEMA_VERSION} is required.`); if (typeof value.viewer_version !== "string" || !value.viewer_version.trim()) throw new Error("viewer_version must be a non-empty string.");
   assertObject(value.project, "project"); assertObject(value.llm_context, "llm_context"); assertObject(value.view, "view"); if (!Array.isArray(value.nodes)) throw new Error("nodes must be an array.");
   if (typeof value.project.root_node_id !== "string" || !NODE_ID.test(value.project.root_node_id) || Object.keys(value.project).length !== 1) throw new Error("project must contain only a valid root_node_id identity field."); if (typeof value.llm_context.summary !== "string" || !Array.isArray(value.llm_context.instructions) || value.llm_context.instructions.some((entry) => typeof entry !== "string")) throw new Error("llm_context is invalid."); assertObject(value.llm_context.tag_definitions, "llm_context.tag_definitions"); for (const [tag, description] of Object.entries(value.llm_context.tag_definitions)) if (!TOKEN_ID.test(tag) || typeof description !== "string") throw new Error(`Invalid tag definition: ${tag}`);
   if ("hidden_tags" in value.view || !Array.isArray(value.view.expanded) || (value.view.tag_filter_mode !== "include" && value.view.tag_filter_mode !== "exclude") || !Array.isArray(value.view.tag_filter_tags) || new Set(value.view.tag_filter_tags).size !== value.view.tag_filter_tags.length || value.view.tag_filter_tags.some((tag) => typeof tag !== "string" || !TOKEN_ID.test(tag))) throw new Error("view expansion or tag filters are invalid."); if (value.view.layout_mode !== undefined && value.view.layout_mode !== "hierarchy" && value.view.layout_mode !== "relations") throw new Error("view.layout_mode is invalid."); if (value.view.layout_compact !== undefined && typeof value.view.layout_compact !== "boolean") throw new Error("view.layout_compact is invalid."); if (value.view.recency_glow !== undefined && typeof value.view.recency_glow !== "boolean") throw new Error("view.recency_glow is invalid."); if (value.view.live_expand !== undefined && typeof value.view.live_expand !== "boolean") throw new Error("view.live_expand is invalid."); assertObject(value.view.positions, "view.positions"); if (typeof value.view.zoom !== "number" || !Array.isArray(value.view.viewport) || value.view.viewport.length !== 2 || value.view.viewport.some((entry) => typeof entry !== "number")) throw new Error("view geometry is invalid."); for (const [id, point] of Object.entries(value.view.positions)) if (!NODE_ID.test(id) || !Array.isArray(point) || point.length !== 2 || point.some((entry) => typeof entry !== "number")) throw new Error(`view.positions contains invalid geometry for ${id}.`); if (value.view.workspace !== undefined) assertObject(value.view.workspace, "view.workspace");
@@ -38,18 +49,19 @@ export function createEmptyProject(name = "Untitled project", summary = ""): Jso
 
 export function generateUniqueId(document: JsonObject): string { const ids = new Set(flattenNodes(nodes(document)).map((node) => stringValue(node.id, "node.id"))); let id = randomUUID().toLowerCase(); while (ids.has(id)) id = randomUUID().toLowerCase(); return id; }
 
-export async function readProject(filePath: string): Promise<{ document: JsonObject; revision: string }> { const raw = await fs.readFile(filePath, "utf8"), parsed = JSON.parse(raw); return { document: validateMap(parsed), revision: JSON.stringify(parsed) }; }
+export async function readProject(filePath: string): Promise<{ document: JsonObject; revision: string }> { if (isNovaDatabasePath(filePath)) return readSqliteProject(filePath); const raw = await fs.readFile(filePath, "utf8"), parsed = JSON.parse(raw); return { document: validateMap(parsed), revision: JSON.stringify(parsed) }; }
 
 export async function writeProjectAtomic(filePath: string, raw: unknown, expectedRevision?: string): Promise<JsonObject> {
   const candidate = structuredClone(raw); assertObject(candidate, "Mind-map root"); candidate.viewer_version = VIEWER_VERSION; const document = validateMap(candidate);
+  if (isNovaDatabasePath(filePath)) return writeSqliteProject(filePath, document, expectedRevision);
   if (expectedRevision !== undefined) { const current = await fs.readFile(filePath, "utf8"); if (JSON.stringify(JSON.parse(current)) !== expectedRevision) throw new Error("The project changed after it was read; reload it before saving to avoid overwriting newer changes."); }
   await fs.mkdir(path.dirname(filePath), { recursive: true }); const temporary = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${process.pid}.${randomUUID()}.tmp`);
   try { await fs.writeFile(temporary, `${JSON.stringify(document, null, 2)}\n`, { encoding: "utf8", flag: "wx" }); await fs.rename(temporary, filePath); return document; } catch (error) { await fs.rm(temporary, { force: true }).catch(() => undefined); throw error; }
 }
 
-export async function createProjectFile(filePath: string, name?: string, summary?: string): Promise<JsonObject> { const document = createEmptyProject(name, summary); await fs.mkdir(path.dirname(filePath), { recursive: true }); const handle = await fs.open(filePath, "wx"); try { await handle.writeFile(`${JSON.stringify(document, null, 2)}\n`, "utf8"); } finally { await handle.close(); } return document; }
+export async function createProjectFile(filePath: string, name?: string, summary?: string): Promise<JsonObject> { const document = createEmptyProject(name, summary); if (isNovaDatabasePath(filePath)) return createSqliteProjectFile(filePath, document); await fs.mkdir(path.dirname(filePath), { recursive: true }); const handle = await fs.open(filePath, "wx"); try { await handle.writeFile(`${JSON.stringify(document, null, 2)}\n`, "utf8"); } finally { await handle.close(); } return document; }
 
-export async function mutateProject(filePath: string, mutation: (document: JsonObject) => unknown): Promise<{ document: JsonObject; result: unknown }> { const { document, revision } = await readProject(filePath); const result = mutation(document); const saved = await writeProjectAtomic(filePath, document, revision); return { document: saved, result }; }
+export async function mutateProject(filePath: string, mutation: (document: JsonObject) => unknown): Promise<{ document: JsonObject; result: unknown }> { if (isNovaDatabasePath(filePath)) return mutateSqliteProject(filePath, mutation); const { document, revision } = await readProject(filePath); const result = mutation(document); const saved = await writeProjectAtomic(filePath, document, revision); return { document: saved, result }; }
 
 export function normalizeTags(value: string[] | string | undefined, fallback = ["uncategorized"]): string[] { const source = value === undefined ? fallback : Array.isArray(value) ? value : value.split(","); const tags = [...new Set(source.map((tag) => tag.trim()).filter(Boolean))]; if (!tags.length || tags.some((tag) => !TOKEN_ID.test(tag))) throw new Error("Tags must be non-empty lowercase kebab-case values."); return tags; }
 export function normalizeRelation(value: string): string { if (!TOKEN_ID.test(value)) throw new Error("relation must be lowercase kebab-case."); return value; }
