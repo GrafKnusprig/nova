@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { addLlmInstruction, changeProjectLink, children, createProjectFile, createProjectNode, defineProjectTag, deleteProjectNode, findNode, moveProjectNode, mutateProject, nodes, projectRoot, readProject, removeLlmInstruction, removeProjectTagDefinition, setLlmContextSummary, updateProjectNode, validateMap, writeProjectAtomic } from "../main/project";
 import { initializeProjectAgents } from "../main/agentsFile";
+import { watchSqliteProject } from "../main/sqliteProject";
 
 async function fixture(): Promise<{ directory: string; file: string }> { const directory = await fs.mkdtemp(path.join(os.tmpdir(), "nova-cli-test-")), file = path.join(directory, "arbitrary-project-name.json"); await createProjectFile(file, "Test project", "Test description"); return { directory, file }; }
 
@@ -27,6 +28,32 @@ test("atomic writes reject a stale project revision", async (context) => {
   updateProjectNode(stale.document, String(projectRoot(stale.document).id), { title: "Stale" }); await assert.rejects(() => writeProjectAtomic(file, stale.document, stale.revision), /changed after it was read/);
 });
 
+test("SQLite live watcher detects external CLI-style commits and stale saves conflict", async (context) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "nova-live-update-test-"));
+  const file = path.join(directory, "live-project.nova");
+  context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  await createProjectFile(file, "Live project", "Initial description");
+  const initial = await readProject(file);
+  const rootId = String(projectRoot(initial.document).id);
+  const watcher = watchSqliteProject(file);
+  try {
+    await mutateProject(file, (document) => updateProjectNode(document, rootId, { summary: "Changed by an external writer" }));
+    const incoming = watcher.readChanged();
+    assert.ok(incoming, "SQLite data_version watcher did not detect an external commit");
+    assert.equal(projectRoot(incoming.document).summary, "Changed by an external writer");
+
+    const staleSnapshot = await readProject(file);
+    await mutateProject(file, (document) => updateProjectNode(document, rootId, { summary: "Newer external change" }));
+    await assert.rejects(
+      () => writeProjectAtomic(file, staleSnapshot.document, staleSnapshot.revision),
+      /changed after it was read/,
+    );
+    assert.equal(projectRoot((await readProject(file)).document).summary, "Newer external change");
+  } finally {
+    watcher.close();
+  }
+});
+
 test("project-specific LLM context mutations remain schema-valid", async (context) => {
   const { directory, file } = await fixture(); context.after(() => fs.rm(directory, { recursive: true, force: true }));
   await mutateProject(file, (document) => { setLlmContextSummary(document, "Domain guidance"); addLlmInstruction(document, "Preserve measured units."); addLlmInstruction(document, "Preserve measured units."); defineProjectTag(document, "domain-area", "A project-specific work area."); });
@@ -34,6 +61,15 @@ test("project-specific LLM context mutations remain schema-valid", async (contex
   assert.equal(llm.summary, "Domain guidance"); assert.deepEqual(llm.instructions, ["Preserve measured units."]); assert.deepEqual(llm.tag_definitions, { "domain-area": "A project-specific work area." }); validateMap(loaded.document);
   await mutateProject(file, (document) => { removeLlmInstruction(document, "Preserve measured units."); removeProjectTagDefinition(document, "domain-area"); });
   loaded = await readProject(file); llm = loaded.document.llm_context as Record<string, unknown>; assert.deepEqual(llm.instructions, []); assert.deepEqual(llm.tag_definitions, {}); validateMap(loaded.document);
+});
+
+test("project text preserves Unicode and emoji while rejecting unsupported controls", async (context) => {
+  const { directory, file } = await fixture(); context.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const loaded = await readProject(file), root = projectRoot(loaded.document);
+  root.summary = "Résumé — αβγ; measured at 5 °C 🧪.";
+  assert.equal(validateMap(loaded.document), loaded.document);
+  root.summary = "Research\u0001notes";
+  assert.throws(() => validateMap(loaded.document), /control characters/);
 });
 
 test("project layout profile is persisted and validated", async (context) => {

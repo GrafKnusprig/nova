@@ -46,8 +46,11 @@ During migration, leave the original JSON source intact and use the CLI's
 migration/import/export commands as documented. After map mutations, run
 `audit`, review findings about touched nodes, and run `validate`.
 
-Write project database content in plain ASCII. Do not use emoji or decorative
-non-ASCII characters in node titles, summaries, rationales, or guidance.
+Write project knowledge in professional scientific language. Do not add emoji
+or decorative symbols to node titles, summaries, rationales, or guidance.
+Unicode text, including emoji supplied by the user or already present in the
+map, is valid project content: preserve it when relevant and do not reject or
+rewrite a project because it contains such characters.
 
 The CLI supports both schema-7 JSON and SQLite `.nova` projects. Prefer `.nova`
 for active work. Use `migration-status` to inspect a legacy JSON project,
