@@ -33,3 +33,201 @@ Use one SQLite database per project as authoritative local storage and retain JS
 #### Paper-method task workflow
 
 Read `AGENTS.md` and mandatory project guidance first. Identify the paper by DOI/title/authors; search globally for the source, method, and aliases; retrieve likely source, method, implementation, and decision nodes; check repository code separately; and inspect linked experiment/result/finding records. Report whether NOVA has a matching paper or method, what is implemented or attempted, what was evaluated, and where evidence is recorded. A map miss is not global novelty. Reuse stable IDs, distinguish source/method/implementation/results, link across categories, and record experiments/results only when performed. Ask only when paper identity or scope uncertainty would change the work.
+
+
+# Local AI
+
+# 🚀 Step-by-Step Integration Guide: Local LLM in Node.js & Electron (Windows)
+
+This guide provides a production-ready blueprint to embed a Large Language Model (LLM) directly into your Electron desktop application for Windows. The model runs 100% locally on the user's machine, completely offline, with automatic CPU/GPU acceleration.
+
+---
+
+## 📋 Architecture Overview
+
+Electron splits its workload into two main parts:
+1. **Main Process (Backend/Node.js):** Has full access to native system resources, file systems, and C++ bindings. **The LLM must run here** so it doesn't freeze your user interface.
+2. **Renderer Process (Frontend/UI):** Handles the HTML/CSS/JavaScript interface. It communicates safely with the Backend via Inter-Process Communication (IPC).
+
+---
+
+## 🛠️ Phase 1: Dependencies & Model Setup
+
+### 1. Install Node Packages
+Run the following command in your Electron project directory to install the native wrapper for the C++ inference engine (`llama.cpp`):
+
+```bash
+npm install node-llama-cpp
+```
+
+### 2. Choose and Download a Model
+Local models must be in the optimized `.gguf` format. For general desktop deployment, you need a balanced model that works fast even on computers without an expensive graphics card.
+
+* **Recommended:** **`Qwen2.5-1.5B-Instruct-Q4_K_M.gguf`** (approx. 1.2 GB).
+* **Alternative:** **`Llama-3-8B-Instruct-Q4_K_M.gguf`** (approx. 4.8 GB, requires more RAM/VRAM but offers higher intelligence).
+* **Setup:** Create a new folder named `models/` inside your project root directory and paste the downloaded `.gguf` file there.
+
+---
+
+## 💻 Phase 2: Core Code Implementation
+
+### 1. The Backend Backend (`main.js` / `index.js`)
+This script initializes the model in system memory and establishes a listener for incoming user prompts from the frontend.
+
+```javascript
+const { app, BrowserWindow, ipcMain } = require('electron');
+const path = require('path');
+
+// Keep variables global so the model stays loaded in memory between prompts
+let getLlama, LlamaModel, LlamaContext, LlamaChatSession;
+let chatSession = null;
+
+async function initLLM() {
+    try {
+        // Dynamic import required because node-llama-cpp uses ES Modules (ESM)
+        const mod = await import("node-llama-cpp");
+        getLlama = mod.getLlama;
+        LlamaModel = mod.LlamaModel;
+        LlamaContext = mod.LlamaContext;
+        LlamaChatSession = mod.LlamaChatSession;
+
+        // 1. Initialize the core llama engine
+        const llama = await getLlama();
+        
+        // 2. Define the path to your GGUF file
+        const modelPath = path.join(__dirname, 'models', 'qwen2.5-1.5b-instruct-q4_k_m.gguf');
+
+        // 3. Load the model parameters
+        const model = new LlamaModel({ llama, modelPath });
+        
+        // 4. Set the Context Window (4096 is optimal for RAM efficiency)
+        const context = new LlamaContext({ 
+            model, 
+            contextSize: 4096 
+        });
+
+        // 5. Create a managed chat session (handles conversational history automatically)
+        chatSession = new LlamaChatSession({ context });
+        console.log("🤖 Local LLM successfully initialized and ready!");
+    } catch (error) {
+        console.error("❌ Failed to initialize LLM:", error);
+    }
+}
+
+function createWindow() {
+    const win = new BrowserWindow({
+        width: 900,
+        height: 700,
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'), // Secure IPC bridge
+            contextIsolation: true,
+            nodeIntegration: false
+        }
+    });
+
+    win.loadFile('index.html');
+}
+
+// Boot up the LLM before opening the UI window
+app.whenReady().then(async () => {
+    await initLLM();
+    createWindow();
+});
+
+// Listen for text prompts sent from the frontend UI
+ipcMain.handle('send-to-llm', async (event, userPrompt) => {
+    if (!chatSession) {
+        return { success: false, error: "Model is still loading or failed to initialize." };
+    }
+    try {
+        // Generate response synchronously (waits until full text is generated)
+        const response = await chatSession.prompt(userPrompt);
+        return { success: true, text: response };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
+```
+
+### 2. The Secure Bridge (`preload.js`)
+Exposes a safe, isolated API pathway to let the frontend send messages to the backend without risking full system access vulnerabilities.
+
+```javascript
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+    askAI: (prompt) => ipcRenderer.invoke('send-to-llm', prompt)
+});
+```
+
+### 3. The Frontend Interface UI (`renderer.js`)
+Handles your application layout interactions (triggers when clicking a button or pressing enter).
+
+```javascript
+const sendBtn = document.getElementById('send-btn');
+const inputField = document.getElementById('user-input');
+const responseArea = document.getElementById('chat-output');
+
+sendBtn.addEventListener('click', async () => {
+    const prompt = inputField.value.trim();
+    if (!prompt) return;
+
+    responseArea.innerText = "Thinking...";
+    inputField.value = ""; // Clear input field
+    
+    // Call the safe exposed bridge API
+    const result = await window.electronAPI.askAI(prompt);
+    
+    if (result.success) {
+        responseArea.innerText = result.text;
+    } else {
+        responseArea.innerText = "Error: " + result.error;
+    }
+});
+```
+
+---
+
+## ⚡ Phase 3: Hardware Acceleration & Context Rules
+
+* **Zero-Config Hardware Switching:** `node-llama-cpp` compiles pre-built Windows binaries. During execution, it checks the computer hardware automatically:
+  1. **NVIDIA CUDA GPU detected:** Offloads the mathematical weights onto VRAM for lightning-fast speeds.
+  2. **Standard Integrated GPU/CPU:** Utilizes modern CPU instruction sets like `AVX2` or `AVX512` to deliver the best possible performance on normal laptops.
+* **Smart Memory Eviction:** The `LlamaChatSession` wrapper actively monitors your `contextSize` limit (4096 tokens). If your chat conversation grows too long, the system will seamlessly discard the oldest historical dialogue exchanges to prevent the Electron app from running out of memory or crashing.
+
+---
+
+## 📦 Phase 4: Production Packaging (Windows)
+
+When compiling your application using `electron-builder` for production distribution, configure these absolute rules inside your **`package.json`**:
+
+### 1. Protect the ASAR Archive (`extraFiles`)
+Electron automatically compresses app files into a monolithic `.asar` archive file. Storing a 1.2+ GB model file inside the ASAR will result in terrible app startup delays. Always exclude it using `extraFiles`:
+
+```json
+"build": {
+  "appId": "com.yourcompany.localai",
+  "win": {
+    "target": ["nsis"]
+  },
+  "extraFiles": [
+    {
+      "from": "models/",
+      "to": "models/",
+      "filter": ["**/*"]
+    }
+  ]
+}
+```
+
+### 2. Rebuild Native Addons
+Because you are loading native C++ code directly into Node.js, run this utility once before building the installer executable to sync architecture formats:
+
+```bash
+npm install --save-dev @electron/rebuild
+npx electron-rebuild
+```
