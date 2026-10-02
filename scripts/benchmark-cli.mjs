@@ -11,8 +11,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const options = {};
 for (let index = 2; index < process.argv.length; index++) {
   const key = process.argv[index];
-  if (!/^--(sizes|repeats|warmups|branching|summary-chars|links-per-node|seed|out-dir|include-npm|include-worker)$/.test(key)) throw new Error(`Unknown option ${key}`);
-  if (key === "--include-npm" || key === "--include-worker") options[key] = true;
+  if (!/^--(sizes|repeats|warmups|branching|summary-chars|links-per-node|seed|out-dir|include-npm|include-worker|include-refresh|idle-gap-ms)$/.test(key)) throw new Error(`Unknown option ${key}`);
+  if (key === "--include-npm" || key === "--include-worker" || key === "--include-refresh") options[key] = true;
   else { const value = process.argv[++index]; if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${key}`); options[key] = value; }
 }
 const integer = (key, fallback, min, max) => {
@@ -22,6 +22,8 @@ const integer = (key, fallback, min, max) => {
 };
 const sizes = String(options["--sizes"] ?? "300,1000,10000").split(",").map(Number);
 if (!sizes.length || sizes.some(value => !Number.isSafeInteger(value) || value < 2 || value > 100000) || new Set(sizes).size !== sizes.length) throw new Error("--sizes requires unique integers between 2 and 100000");
+if (options["--include-refresh"]) options["--include-worker"] = true;
+const idleGap = integer("--idle-gap-ms", 1000, 0, 60000);
 const repeats = integer("--repeats", 5, 1, 100), warmups = integer("--warmups", 1, 0, 20);
 const branching = integer("--branching", 6, 2, 100), summaryChars = integer("--summary-chars", 1000, 0, 100000);
 const links = integer("--links-per-node", Math.min(2, ...sizes.map(size => size - 2)), 0, Math.min(100, ...sizes.map(size => size - 2)));
@@ -64,7 +66,7 @@ async function warm(args, session) {
   }
 }
 const percentile = (values, fraction) => [...values].sort((a, b) => a - b)[Math.max(0, Math.ceil(values.length * fraction) - 1)];
-const rows = [], samples = [], fixtures = [];
+const rows = [], samples = [], fixtures = [], refreshRows = [], refreshSamples = [];
 for (const size of sizes) {
   const project = path.join(directory, `${size}.nova`);
   const generated = fresh("bundled", ["benchmark-generate", "--project", project, "--nodes", String(size), "--branching", String(branching), "--summary-chars", String(summaryChars), "--links-per-node", String(links), "--seed", String(seed)]).value;
@@ -87,11 +89,30 @@ for (const size of sizes) {
     rows.push(row);
     process.stderr.write(`${size} ${command[0]} ${mode}: median ${row.median_ms.toFixed(2)} ms\n`);
   }
+  if (options["--include-refresh"]) {
+    for (const writer of ["worker", "bundled"]) for (const gapMs of [0, idleGap]) {
+      const measured = [];
+      for (let iteration = -warmups; iteration < repeats; iteration++) {
+        // Fill first; startup is measured elsewhere. Each iteration commits a
+        // distinct edit, then times the following context read independently.
+        fresh("worker", ["context", "--query", "retrieval latency", "--project", project]);
+        const write = fresh(writer, ["update", "--id", generated.sample_node_id, "--summary", `Synthetic retrieval latency refresh ${writer} ${gapMs} ${iteration}`, "--project", project]);
+        if (gapMs) await new Promise(resolve => setTimeout(resolve, gapMs));
+        const read = fresh("worker", ["context", "--query", "retrieval latency", "--project", project]);
+        if (iteration >= 0) {
+          const sample = { size, writer: writer === "worker" ? "own" : "external", gap_ms: gapMs, iteration, write_ms: write.wall_ms, read_ms: read.wall_ms, ensure_current_ms: read.profile.phases_ms["cache.ensure-current"] ?? 0, write_phases_ms: write.profile.phases_ms };
+          measured.push(sample); refreshSamples.push(sample);
+        }
+      }
+      const row = { size, writer: writer === "worker" ? "own" : "external", gap_ms: gapMs, write_median_ms: percentile(measured.map(sample => sample.write_ms), .5), read_median_ms: percentile(measured.map(sample => sample.read_ms), .5), ensure_current_median_ms: percentile(measured.map(sample => sample.ensure_current_ms), .5) };
+      refreshRows.push(row); process.stderr.write(`${size} refresh ${row.writer} gap=${gapMs}: read ${row.read_median_ms.toFixed(2)} ms, write ${row.write_median_ms.toFixed(2)} ms\n`);
+    }
+  }
   if (options["--include-worker"]) {
     const stopped = spawnSync(process.execPath, [cliBundle, "worker-stop", "--project", project], { env: { ...env, NOVA_CLI_WORKER: "1" }, encoding: "utf8", timeout: 10000 });
     if (stopped.status !== 0) throw new Error(`Worker cleanup failed: ${stopped.stderr}`);
   }
 }
-const report = { timestamp: new Date().toISOString(), node: process.version, platform: process.platform, arch: process.arch, cpu: os.cpus()[0]?.model, repeats, warmups, configuration: { sizes, branching, summaryChars, links, seed }, notes: ["Fresh process timings include startup and captured stdout; OS file cache is not cleared.", "Warm calls reuse the process but reopen SQLite; cached calls retain a snapshot and indexes; worker calls measure the actual bundled client over IPC.", "Profiling adds overhead. Phase timings are inclusive; sqlite.load-document contains selects and validation.", "Fixture generation, bundling and warmups are excluded. Updates operate only on generated fixtures.", "Synthetic data does not model every real project; compare with measurements on the affected machine.", "With few repeats, p95 is effectively the maximum sample. Bundled Node is not a packaged Windows SEA executable."], fixtures, rows, samples };
+const report = { timestamp: new Date().toISOString(), node: process.version, platform: process.platform, arch: process.arch, cpu: os.cpus()[0]?.model, repeats, warmups, configuration: { sizes, branching, summaryChars, links, seed, idleGapMs: idleGap }, notes: ["Fresh process timings include startup and captured stdout; OS file cache is not cleared.", "Warm calls reuse the process but reopen SQLite; cached calls retain a snapshot and indexes; worker calls measure the actual bundled client over IPC.", "Profiling adds overhead. Phase timings are inclusive; sqlite.load-document contains selects and validation.", "Fixture generation, bundling and warmups are excluded. Updates operate only on generated fixtures.", "Synthetic data does not model every real project; compare with measurements on the affected machine.", "With few repeats, p95 is effectively the maximum sample. Bundled Node is not a packaged Windows SEA executable."], fixtures, rows, samples, refresh_rows: refreshRows, refresh_samples: refreshSamples };
 await writeFile(path.join(directory, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-process.stdout.write(`${JSON.stringify({ ok: true, directory, report: path.join(directory, "report.json"), rows }, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ ok: true, directory, report: path.join(directory, "report.json"), rows, refresh_rows: refreshRows }, null, 2)}\n`);

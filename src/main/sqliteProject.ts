@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { accessSync, closeSync, mkdirSync, openSync, promises as fs, realpathSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { installContextIndex, prepareContextIndex, type ContextIndex } from "./context";
 import { measureCliPhase } from "./cliProfile";
 import { assertObject, flattenNodes, nodes, projectRootId, stringValue, validateMap, VIEWER_VERSION, type JsonObject } from "./project";
 
@@ -412,6 +413,10 @@ function freezeSnapshot(value: unknown): void {
   Object.freeze(value);
 }
 
+export interface CacheMarker { identity: string; version: number; generation: number }
+export interface PreparedSnapshot { document: JsonObject; revision: string; index: ContextIndex }
+export interface PendingCacheUpdate { document: JsonObject; previous?: ContextIndex }
+
 /** Worker-owned immutable snapshot. No transaction survives a request. */
 export class SqliteReadSession {
   private db?: DatabaseSync;
@@ -423,36 +428,111 @@ export class SqliteReadSession {
   private active = false;
   private generation = 0;
   private reloads = 0;
+  private incrementalUpdates = 0;
+  private backgroundReloads = 0;
+  private normalizedRebuilt = 0;
+  private pendingWrite?: { document: JsonObject; version: number };
 
   constructor(readonly filePath: string) {
     this.identity = this.fileIdentity();
     this.db = openDatabase(filePath);
   }
   private fileIdentity(): string { const stat = statSync(this.filePath); return `${stat.dev}:${stat.ino}`; }
-  begin(): void {
-    if (this.active) throw new Error("A cached read request is already active.");
+  private connection(): DatabaseSync {
     const identity = this.fileIdentity();
     if (identity !== this.identity) {
       this.db?.close(); this.db = undefined; this.identity = identity;
-      this.snapshot = undefined; this.dataVersion = -1;
+      this.snapshot = undefined; this.pendingWrite = undefined; this.dataVersion = -1;
+      this.generation++;
     }
-    this.db ??= openDatabase(this.filePath);
-    const db = this.db;
+    return this.db ??= openDatabase(this.filePath);
+  }
+  private pin(): number {
+    if (this.active) throw new Error("A cached read request is already active.");
+    const db = this.connection();
     db.exec("BEGIN"); this.active = true;
     try {
-      // Pin a read snapshot before comparing the connection-local change marker.
       db.prepare("SELECT root_node_id FROM project_info WHERE singleton=1").get();
-      const version = Number(db.prepare("PRAGMA data_version").get()?.data_version ?? 0);
-      if (!this.snapshot || version !== this.dataVersion) {
-        const document = measureCliPhase("cache.reload", () => loadDocument(db));
-        const revision = measureCliPhase("cache.revision-on-change", () => JSON.stringify(document));
-        const byId = rawNodeMap(document);
-        freezeSnapshot(document);
-        this.snapshot = { document, revision }; this.byId = byId;
-        this.searches.clear(); this.dataVersion = version; this.generation++; this.reloads++;
+      return Number(db.prepare("PRAGMA data_version").get()?.data_version ?? 0);
+    } catch (error) { this.end(); throw error; }
+  }
+  marker(): CacheMarker {
+    if (this.active) throw new Error("Cannot probe during an active read transaction.");
+    try { const version = this.pin(); return { identity: this.identity, version, generation: this.generation }; }
+    finally { this.end(); }
+  }
+  isCurrent(marker: CacheMarker): boolean {
+    const current = this.marker();
+    return current.identity === marker.identity && current.version === marker.version && current.generation === marker.generation;
+  }
+  needsRefresh(): boolean {
+    const marker = this.marker();
+    return Boolean(this.pendingWrite) || !this.snapshot || marker.version !== this.dataVersion;
+  }
+  /** Leaves a matching SQLite transaction open only when the cache is current. */
+  beginIfCurrent(): boolean {
+    const version = this.pin();
+    if (!this.pendingWrite && this.snapshot && version === this.dataVersion) return true;
+    this.end(); return false;
+  }
+  begin(): void {
+    const version = this.pin();
+    try {
+      if (this.pendingWrite || !this.snapshot || version !== this.dataVersion) {
+        const own = this.pendingWrite?.version === version;
+        const document = own ? this.pendingWrite!.document : measureCliPhase("cache.reload", () => loadDocument(this.db!));
+        this.publish(document, version);
+        if (own) this.incrementalUpdates++; else this.reloads++;
       }
     } catch (error) { this.end(); throw error; }
   }
+  private publish(document: JsonObject, version: number, prepared?: PreparedSnapshot): void {
+    const previous = this.snapshot?.document;
+    const revision = prepared?.revision ?? measureCliPhase("cache.revision-on-change", () => JSON.stringify(document));
+    const index = prepared?.index ?? measureCliPhase("cache.prepare-context", () => prepareContextIndex(document, previous ? prepareContextIndex(previous) : undefined));
+    freezeSnapshot(document); installContextIndex(document, index);
+    this.snapshot = { document, revision }; this.byId = rawNodeMap(document);
+    this.searches.clear(); this.pendingWrite = undefined; this.dataVersion = version; this.generation++;
+    this.normalizedRebuilt = index.normalizedRebuilt;
+  }
+  pendingUpdate(marker: CacheMarker): PendingCacheUpdate | undefined {
+    if (!this.pendingWrite || this.pendingWrite.version !== marker.version) return undefined;
+    return { document: this.pendingWrite.document, previous: this.snapshot ? prepareContextIndex(this.snapshot.document) : undefined };
+  }
+  adopt(prepared: PreparedSnapshot, marker: CacheMarker, own = false): boolean {
+    if (this.active || !this.isCurrent(marker)) return false;
+    this.publish(prepared.document, marker.version, prepared);
+    if (own) this.incrementalUpdates++; else { this.reloads++; this.backgroundReloads++; }
+    return true;
+  }
+  prepared(): PreparedSnapshot {
+    const { document, revision } = this.read();
+    return { document, revision, index: prepareContextIndex(document) };
+  }
+  /** Own writes share this connection, so data_version only tracks other writers. */
+  mutate(mutation: (document: JsonObject) => unknown): { document: JsonObject; result: unknown } {
+    if (this.active) throw new Error("Cannot mutate during a retained read transaction.");
+    const db = this.connection();
+    let version = -1;
+    const changed = transaction(db, () => {
+      version = Number(db.prepare("PRAGMA data_version").get()?.data_version ?? 0);
+      const before = measureCliPhase("sqlite.load-document", () => loadDocument(db));
+      const after = measureCliPhase("sqlite.clone", () => structuredClone(before));
+      const result = mutation(after);
+      after.viewer_version = stringValue(before.viewer_version, "viewer_version");
+      measureCliPhase("sqlite.validate-candidate", () => validateMap(after));
+      measureCliPhase("sqlite.apply-mutation", () => applySqliteMutation(db, before, after));
+      return { document: measureCliPhase("sqlite.load-document", () => loadDocument(db)), result };
+    });
+    // Invalidate only after COMMIT. An external commit after it changes data_version
+    // and will be detected before the next read; no stale version is blessed.
+    // Mark it dirty immediately, but defer revision serialization, context
+    // preparation and publication to the helper after the CLI response.
+    this.pendingWrite = { document: changed.document, version };
+    this.generation++;
+    return changed;
+  }
+  canMutate(): boolean { return !this.active; }
   end(): void { if (this.active) { this.db!.exec("ROLLBACK"); this.active = false; } }
   read(): { document: JsonObject; revision: string } {
     if (!this.active || !this.snapshot) throw new Error("Cached reads require an active request snapshot.");
@@ -468,8 +548,8 @@ export class SqliteReadSession {
     if (this.searches.size >= 64) this.searches.delete(this.searches.keys().next().value!);
     this.searches.set(key, result); return result;
   }
-  status(): JsonObject { return { generation: this.generation, reload_count: this.reloads, node_count: this.byId.size, query_cache_size: this.searches.size }; }
-  close(): void { this.end(); this.db?.close(); this.db = undefined; this.snapshot = undefined; this.byId.clear(); this.searches.clear(); }
+  status(): JsonObject { return { generation: this.generation, reload_count: this.reloads, node_count: this.byId.size, query_cache_size: this.searches.size, incremental_update_count: this.incrementalUpdates, background_reload_count: this.backgroundReloads, normalized_records_rebuilt: this.normalizedRebuilt, pending_own_cache_update: Boolean(this.pendingWrite) }; }
+  close(): void { this.end(); this.db?.close(); this.db = undefined; this.snapshot = undefined; this.pendingWrite = undefined; this.byId.clear(); this.searches.clear(); }
 }
 
 export function retainSqliteReadSession(filePath: string): SqliteReadSession {
@@ -527,6 +607,8 @@ export function writeSqliteProject(filePath: string, raw: unknown, expectedRevis
 }
 
 export function mutateSqliteProject(filePath: string, mutation: (document: JsonObject) => unknown): { document: JsonObject; result: unknown } {
+  const retained = retainedSession(filePath);
+  if (retained?.canMutate()) return retained.mutate(mutation);
   const db = openDatabase(filePath);
   try {
     return transaction(db, () => {

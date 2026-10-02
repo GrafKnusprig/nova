@@ -4,9 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { buildBenchmarkFixture } from "../main/benchmarkFixture";
-import { buildContextPack, searchProject } from "../main/context";
+import { BackgroundCache } from "../main/backgroundCache";
+import { buildContextPack, prepareContextIndex, searchProject } from "../main/context";
 import { changeProjectLink, createEmptyProject, createProjectNode, createProjectFile, moveProjectNode, mutateProject, nodeAgentGuidance, nodes, projectRoot, updateProjectNode, validateMap } from "../main/project";
-import { migrateJsonToSqlite, releaseSqliteReadSession, retainSqliteReadSession, searchSqliteIndex } from "../main/sqliteProject";
+import { migrateJsonToSqlite, releaseSqliteReadSession, retainSqliteReadSession, searchSqliteIndex, type PendingCacheUpdate, type PreparedSnapshot } from "../main/sqliteProject";
 
 test("retained snapshots reuse data and refresh original records, guidance, hierarchy and search after external writes", async context => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "nova-cache-test-"));
@@ -108,4 +109,85 @@ test("topic guidance is validated and round trips through SQLite metadata", asyn
   } finally { releaseSqliteReadSession(path.join(directory, "guidance.nova")); }
   projectRoot(document).agent_guidance = { summary: "", instructions: [123] };
   assert.throws(() => validateMap(document), /agent_guidance/);
+});
+
+test("own committed mutations prepare current context, selectively normalize text, and reject obsolete background snapshots", async context => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "nova-incremental-test-")), file = path.join(directory, "test.nova");
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const fixture = buildBenchmarkFixture({ count: 300, branching: 6, summaryChars: 1000, linksPerNode: 2, seed: 1 });
+  await migrateJsonToSqlite(file, fixture);
+  const session = retainSqliteReadSession(file);
+  context.after(() => releaseSqliteReadSession(file));
+  session.begin(); const obsolete = session.prepared(); session.end();
+  const marker = session.marker();
+  const leaf = [...obsolete.index.byId.values()].at(-1)!;
+  const changed = await mutateProject(file, document => updateProjectNode(document, String(leaf.id), { summary: "freshcommittedmarker" }));
+  assert.equal(session.status().pending_own_cache_update, true);
+  assert.equal(session.beginIfCurrent(), false, "reads cannot use the previous cache after a committed own write");
+  session.begin(); session.end();
+  assert.equal(session.status().incremental_update_count, 1);
+  assert.equal(session.status().normalized_records_rebuilt, 1);
+  assert.equal(session.status().reload_count, 1);
+  assert.equal(session.adopt(obsolete, marker), false, "own commit changes generation even though data_version stays unchanged");
+  assert.equal(session.beginIfCurrent(), true);
+  const current = session.read();
+  assert.equal(session.node(String(leaf.id))?.summary, "freshcommittedmarker");
+  const scores = searchSqliteIndex(file, "freshcommittedmarker");
+  assert.deepEqual(buildContextPack(current.document, "freshcommittedmarker", undefined, 6000, 1, scores), buildContextPack(structuredClone(current.document), "freshcommittedmarker", undefined, 6000, 1, scores));
+  session.end();
+  const beforeFailure = session.status().generation;
+  await assert.rejects(mutateProject(file, document => { updateProjectNode(document, String(leaf.id), { summary: "mustrollback" }); throw new Error("abort mutation"); }), /abort mutation/);
+  assert.equal(session.status().generation, beforeFailure);
+  assert.equal(session.beginIfCurrent(), true); assert.equal(session.node(String(leaf.id))?.summary, "freshcommittedmarker");
+  const beforeExternal = session.prepared(); session.end();
+  const externalMarker = session.marker();
+  session.begin();
+  await mutateProject(file, document => updateProjectNode(document, String(leaf.id), { summary: "externalnewmarker" }));
+  session.end();
+  assert.equal(session.adopt(beforeExternal, externalMarker), false, "other-connection commits reject a stale candidate");
+  assert.equal(session.beginIfCurrent(), false);
+  session.begin(); assert.equal(session.node(String(leaf.id))?.summary, "externalnewmarker"); session.end();
+});
+
+
+test("a pending read waits for preparation and retries an obsolete job without holding a database transaction", async context => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "nova-wait-test-")), file = path.join(directory, "test.nova");
+  await createProjectFile(file, "Wait test");
+  context.after(() => rm(directory, { recursive: true, force: true }));
+  const session = retainSqliteReadSession(file);
+  context.after(() => releaseSqliteReadSession(file));
+  session.begin(); const root = String(projectRoot(session.read().document).id); session.end();
+  const jobs: Array<{ snapshot: PreparedSnapshot; resolve: (snapshot: PreparedSnapshot) => void; reject: (error: Error) => void }> = [];
+  class ControlledCache extends BackgroundCache {
+    protected override build(update?: PendingCacheUpdate): Promise<PreparedSnapshot> {
+      assert.ok(update);
+      const document = update.document;
+      const snapshot = { document, revision: JSON.stringify(document), index: prepareContextIndex(document, update.previous) };
+      return new Promise((resolve, reject) => jobs.push({ snapshot, resolve, reject }));
+    }
+  }
+  const cache = new ControlledCache(session, () => false);
+  context.after(() => cache.close());
+  await mutateProject(file, document => updateProjectNode(document, root, { summary: "firstjobmarker" }));
+  const rebuilding = cache.refresh();
+  let answered = false;
+  const read = cache.beginRead().then(() => { answered = true; });
+  await Promise.resolve();
+  assert.equal(answered, false, "an unfinished rebuild cannot serve the old snapshot");
+  assert.equal(session.canMutate(), true, "waiting does not hold a SQLite read transaction");
+  await mutateProject(file, document => updateProjectNode(document, root, { summary: "latestjobmarker" }));
+  jobs[0].resolve(jobs[0].snapshot); await rebuilding;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(jobs.length, 2, "the obsolete first job is replaced by a current one");
+  assert.equal(answered, false);
+  jobs[1].resolve(jobs[1].snapshot); await read;
+  assert.equal(session.node(root)?.summary, "latestjobmarker"); session.end();
+  assert.equal(cache.status().rejected_background_rebuild_count, 1);
+  await mutateProject(file, document => updateProjectNode(document, root, { summary: "retrymarker" }));
+  const failedRead = cache.beginRead();
+  jobs[2].reject(new Error("simulated helper failure"));
+  await assert.rejects(failedRead, /simulated helper failure/);
+  assert.equal(session.beginIfCurrent(), false, "a failed rebuild never blesses stale state");
+  const retried = cache.beginRead(); jobs[3].resolve(jobs[3].snapshot); await retried;
+  assert.equal(session.node(root)?.summary, "retrymarker"); session.end();
 });

@@ -1,9 +1,11 @@
+import { isDeepStrictEqual } from "node:util";
 import { children, flattenNodes, nodes, projectRoot, stringValue, type JsonObject } from "./project";
 
 type FlatNode = ReturnType<typeof flattenNodes>[number];
 type PreparedNode = { normalizedTitle: string; titleText: string; fullText: string; hierarchyText: string };
 type TopicGuidance = { id: string; title: string; summary: string; instructions: string[] };
-interface ContextIndex {
+export interface ContextIndex {
+  normalizedRebuilt: number;
   flat: FlatNode[];
   byId: Map<string, FlatNode>;
   categories: FlatNode[];
@@ -20,7 +22,7 @@ type SearchResult = { hits: SearchHit[]; exact: SearchHit[]; categories: FlatNod
 const indexes = new WeakMap<JsonObject, ContextIndex>();
 
 // Derived navigation/search data are built once per immutable document snapshot.
-function contextIndex(document: JsonObject): ContextIndex {
+function contextIndex(document: JsonObject, previous?: ContextIndex): ContextIndex {
   const cached = indexes.get(document);
   if (cached) return cached;
   const flat = flattenNodes(nodes(document));
@@ -29,19 +31,29 @@ function contextIndex(document: JsonObject): ContextIndex {
   const categoryById = new Map<string, FlatNode>(), paths = new Map<string, string[]>();
   const incoming = new Map<string, string[]>(), prepared = new Map<string, PreparedNode>();
   const guidance = new Map<string, TopicGuidance[]>();
+  let normalizedRebuilt = 0;
   for (const node of flat) {
     const id = String(node.id), parent = node.parentId ? byId.get(node.parentId) : undefined;
-    const path = [...(parent ? paths.get(String(parent.id))! : []), String(node.title)];
+    const computedPath = [...(parent ? paths.get(String(parent.id))! : []), String(node.title)];
+    const oldPath = previous?.paths.get(id);
+    const path = oldPath && isDeepStrictEqual(oldPath, computedPath) ? oldPath : computedPath;
     paths.set(id, path);
     categoryById.set(id, node.depth === 1 || !parent ? node : categoryById.get(String(parent.id))!);
     const scopes = parent ? guidance.get(String(parent.id))! : [];
     const own = node.agent_guidance as { summary: string; instructions: string[] } | undefined;
-    guidance.set(id, own ? [...scopes, { id, title: String(node.title), summary: own.summary, instructions: own.instructions }] : scopes);
-    prepared.set(id, {
+    const computedScopes = own ? [...scopes, { id, title: String(node.title), summary: own.summary, instructions: own.instructions }] : scopes;
+    const oldScopes = previous?.guidance.get(id);
+    guidance.set(id, oldScopes && isDeepStrictEqual(oldScopes, computedScopes) ? oldScopes : computedScopes);
+    const old = previous?.byId.get(id);
+    const prior = previous?.prepared.get(id);
+    const hierarchyText = path.slice(0, -1).join(" ");
+    const unchanged = old && prior && old.title === node.title && old.summary === node.summary && old.rationale === node.rationale && old.main_tag === node.main_tag && JSON.stringify(old.tags) === JSON.stringify(node.tags) && hierarchyText === previous!.paths.get(id)!.slice(0, -1).join(" ");
+    if (!unchanged) normalizedRebuilt++;
+    prepared.set(id, unchanged ? prior : {
       normalizedTitle: normalize(String(node.title)),
       titleText: normalize(`${node.title} ${node.main_tag} ${(node.tags as string[]).join(" ")}`),
       fullText: normalize(`${node.title} ${node.summary} ${node.rationale ?? ""} ${(node.tags as string[]).join(" ")} ${node.main_tag}`),
-      hierarchyText: normalize(path.slice(0, -1).join(" ")),
+      hierarchyText: normalize(hierarchyText),
     });
     for (const link of node.links as Array<{ target: string }>) {
       const sources = incoming.get(link.target) ?? [];
@@ -49,9 +61,27 @@ function contextIndex(document: JsonObject): ContextIndex {
     }
   }
   const excerpts = new Map<string, Record<string, unknown>>(), excerptTokens = new Map<string, number>();
-  const index: ContextIndex = { flat, byId, categories, categoryById, paths, incoming, prepared, guidance, excerpts, excerptTokens, searches: new Map() };
+  for (const [id, sources] of incoming) {
+    const oldSources = previous?.incoming.get(id);
+    if (oldSources && isDeepStrictEqual(oldSources, sources)) incoming.set(id, oldSources);
+  }
+  if (previous) for (const [id, excerpt] of previous.excerpts) {
+    const node = byId.get(id), category = categoryById.get(id);
+    if (node && category && isDeepStrictEqual(excerpt, { id: node.id, title: node.title, path: paths.get(id), category_id: category.id, category_title: category.title, tags: node.tags, main_tag: node.main_tag, summary: node.summary, rationale: node.rationale, links: node.links })) {
+      excerpts.set(id, excerpt); excerptTokens.set(id, previous.excerptTokens.get(id)!);
+    }
+  }
+  const index: ContextIndex = { normalizedRebuilt, flat, byId, categories, categoryById, paths, incoming, prepared, guidance, excerpts, excerptTokens, searches: new Map() };
   if (Object.isFrozen(document)) indexes.set(document, index);
   return index;
+}
+
+/** Prepared indexes can cross the private background-process IPC channel. */
+export function prepareContextIndex(document: JsonObject, previous?: ContextIndex): ContextIndex {
+  return contextIndex(document, previous);
+}
+export function installContextIndex(document: JsonObject, index: ContextIndex): void {
+  indexes.set(document, index);
 }
 
 function cachedExcerpt(index: ContextIndex, id: string): Record<string, unknown> {

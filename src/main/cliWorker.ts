@@ -166,6 +166,8 @@ export async function forwardCliToWorker(args: string[]): Promise<number | null>
 export async function runWorker(args: string[]): Promise<void> {
   const { releaseSqliteReadSession, retainSqliteReadSession } = await import("./sqliteProject");
   const { runCli } = await import("./cli");
+  const { BackgroundCache } = await import("./backgroundCache");
+  const { measureAsyncCliPhase } = await import("./cliProfile");
   const { options } = parseCliArguments(["worker", ...args]);
   if (["project", "address", "descriptor", "token"].some(key => typeof options[key] !== "string")) throw new Error("Invalid worker startup arguments.");
   const project = options.project as string, token = options.token as string;
@@ -176,11 +178,13 @@ export async function runWorker(args: string[]): Promise<void> {
   const sockets = new Set<net.Socket>();
   let timer: NodeJS.Timeout | undefined, active = 0, closing = false;
   let queue = Promise.resolve();
+  const cache = new BackgroundCache(session, () => !active && !closing);
   const shutdown = async () => {
     if (closing) return; closing = true;
     if (timer) clearTimeout(timer);
     server.close();
     await queue;
+    cache.close();
     for (const socket of sockets) socket.destroy();
     releaseSqliteReadSession(project);
     const current = await fs.readFile(descriptorPath, "utf8").then(raw => JSON.parse(raw) as Descriptor).catch(() => undefined);
@@ -218,15 +222,15 @@ export async function runWorker(args: string[]): Promise<void> {
           const command = message.args[0];
           if (command === "worker-stop") { stop = true; stdout = `${JSON.stringify({ ok: true, command, project, running: false })}\n`; }
           else if (command === "worker-status") {
-            session.begin();
-            stdout = `${JSON.stringify({ ok: true, command, project, running: true, pid: process.pid, idle_timeout_ms: timeout, ...session.status() })}\n`;
+            await cache.beginRead();
+            stdout = `${JSON.stringify({ ok: true, command, project, running: true, pid: process.pid, idle_timeout_ms: timeout, ...session.status(), ...cache.status() })}\n`;
           } else {
-            code = await runCli(message.args, { before: () => { if (READS.has(command)) session.begin(); }, after: () => session.end() });
+            code = await runCli(message.args, { before: async () => { if (READS.has(command)) await measureAsyncCliPhase("cache.ensure-current", () => cache.beginRead()); }, after: () => session.end() });
           }
         } catch (error) { code = 1; stderr += `${JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) })}\n`; }
         finally { session.end(); process.stdout.write = originalOut; process.stderr.write = originalError; active--; }
         socket.end(`${JSON.stringify({ code, stdout, stderr })}\n`);
-        if (stop) { setImmediate(() => { void shutdown(); }); } else scheduleIdle();
+        if (stop) { setImmediate(() => { void shutdown(); }); } else { scheduleIdle(); cache.afterReply(); }
       }).catch(error => { process.stderr.write(`${String(error)}\n`); void shutdown(); });
     });
   });
@@ -239,5 +243,5 @@ export async function runWorker(args: string[]): Promise<void> {
       await fs.rename(temporary, descriptorPath);
     } finally { await fs.rm(temporary, { force: true }); }
     scheduleIdle();
-  } catch (error) { server.close(); releaseSqliteReadSession(project); throw error; }
+  } catch (error) { server.close(); cache.close(); releaseSqliteReadSession(project); throw error; }
 }

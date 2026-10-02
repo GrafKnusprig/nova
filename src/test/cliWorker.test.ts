@@ -30,7 +30,10 @@ test("CLI worker coordinates startup, detects external and own writes, isolates 
   await mutateProject(file, document => { root = String(projectRoot(document).id); updateProjectNode(document, root, { summary: "externalmarker" }); });
   const refreshed = JSON.parse((await cli(file, ["get", "--id", root])).stdout);
   assert.equal(refreshed.node.summary, "externalmarker");
-  await cli(file, ["update", "--id", root, "--summary", "ownmarker"]);
+  const edited = await cli(file, ["update", "--id", root, "--summary", "ownmarker"]);
+  const editProfile = edited.stderr.split("\n").filter(line => line.startsWith('{"type":"nova-cli-profile"')).map(line => JSON.parse(line))[0];
+  assert.equal(editProfile.phases_ms["cache.prepare-context"], undefined);
+  assert.equal(editProfile.phases_ms["cache.revision-on-change"], undefined);
   assert.equal(JSON.parse((await cli(file, ["get", "--id", root])).stdout).node.summary, "ownmarker");
   await cli(file, ["instruction-add", "--id", root, "--instruction", "Keep method and result separate."]);
   const pack = JSON.parse((await cli(file, ["context", "--query", "ownmarker"])).stdout);
@@ -42,7 +45,10 @@ test("CLI worker coordinates startup, detects external and own writes, isolates 
   assert.equal(profile.phases_ms["cache.reload"], undefined);
   assert.equal(profile.phases_ms["sqlite.revision-json"], undefined);
   assert.deepEqual(JSON.parse((await cli(file, ["context", "--query", "ownmarker"], "5000", true)).stdout), JSON.parse(second.stdout));
-  assert.equal(JSON.parse((await cli(file, ["worker-status"])).stdout).reload_count, 4);
+  const updatedStatus = JSON.parse((await cli(file, ["worker-status"])).stdout);
+  assert.equal(updatedStatus.reload_count, 2);
+  assert.equal(updatedStatus.incremental_update_count, 2);
+  assert.equal(updatedStatus.normalized_records_rebuilt, 0);
   if (process.platform !== "win32") {
     const endpointDirectory = `/tmp/nova-cli-${process.getuid!()}`;
     for (const filename of (await readdir(endpointDirectory)).filter(name => name.endsWith(".json"))) {
@@ -79,4 +85,39 @@ test("idle worker exits and the next ordinary command restarts it automatically"
   await cli(file, ["context-get"], "1000");
   const next = JSON.parse((await cli(file, ["worker-status"], "1000")).stdout);
   assert.notEqual(next.pid, first.pid);
+});
+
+test("idle background refresh prepares external changes and immediate reads wait for current records", async context => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "nova-background-test-")), file = path.join(directory, "test.nova"), replaceFile = path.join(directory, "replace.nova");
+  await createProjectFile(file, "Background test");
+  context.after(async () => { await cli(file, ["worker-stop"]).catch(() => {}); await cli(replaceFile, ["worker-stop"]).catch(() => {}); await rm(directory, { recursive: true, force: true }); });
+  const before = JSON.parse((await cli(file, ["worker-status"])).stdout);
+  let root = "";
+  await mutateProject(file, document => { root = String(projectRoot(document).id); updateProjectNode(document, root, { summary: "idlebackgroundmarker" }); });
+  await sleep(1000);
+  const ready = JSON.parse((await cli(file, ["worker-status"])).stdout);
+  assert.ok(ready.background_idle_reload_count > before.background_idle_reload_count, "refresh completed during idle time, before this request");
+  assert.equal(JSON.parse((await cli(file, ["get", "--id", root])).stdout).node.summary, "idlebackgroundmarker");
+  await mutateProject(file, document => updateProjectNode(document, root, { summary: "immediateexternalmarker" }));
+  const immediate = await cli(file, ["context", "--query", "immediateexternalmarker"]);
+  assert.deepEqual(JSON.parse(immediate.stdout), JSON.parse((await cli(file, ["context", "--query", "immediateexternalmarker"], "5000", true)).stdout));
+  assert.equal(JSON.parse((await cli(file, ["get", "--id", root])).stdout).node.summary, "immediateexternalmarker");
+  await cli(file, ["update", "--id", root, "--summary", "immediateownmarker"]);
+  const own = JSON.parse((await cli(file, ["worker-status"])).stdout);
+  assert.equal(own.incremental_update_count, 1);
+  assert.equal(JSON.parse((await cli(file, ["get", "--id", root])).stdout).node.summary, "immediateownmarker");
+  const after = JSON.parse((await cli(file, ["worker-status"])).stdout);
+  assert.equal(after.reload_count, own.reload_count, "own write did not defer a rebuild to the next read");
+  const replacement = path.join(directory, "replacement.nova");
+  // Atomic replacement requires a clean database without live WAL sidecars.
+  await createProjectFile(replaceFile, "Original");
+  await cli(replaceFile, ["worker-status"]);
+  await createProjectFile(replacement, "Replacement");
+  const { rename, writeFile } = await import("node:fs/promises");
+  await rename(replacement, replaceFile);
+  assert.equal(JSON.parse((await cli(replaceFile, ["list"])).stdout).nodes[0].title, "Replacement");
+  await writeFile(replacement, "invalid"); await rename(replacement, replaceFile);
+  await assert.rejects(cli(replaceFile, ["list"]));
+  await createProjectFile(replacement, "Repaired"); await rename(replacement, replaceFile);
+  assert.equal(JSON.parse((await cli(replaceFile, ["list"])).stdout).nodes[0].title, "Repaired");
 });

@@ -9,3 +9,9 @@ export function measureCliPhase<T>(name: string, action: () => T): T {
   try { return action(); } finally { phases[name] = (phases[name] ?? 0) + performance.now() - start; }
 }
 export function finishCliProfile(): Record<string, number> | undefined { const result = phases; phases = undefined; return result; }
+
+export async function measureAsyncCliPhase<T>(name: string, action: () => Promise<T>): Promise<T> {
+  if (!phases) return action();
+  const start = performance.now();
+  try { return await action(); } finally { phases[name] = (phases[name] ?? 0) + performance.now() - start; }
+}

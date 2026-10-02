@@ -108,14 +108,14 @@ async function execute(command: string, options: Options): Promise<unknown> {
   throw new Error(`Unknown command: ${command}`);
 }
 
-export async function runCli(args: string[], hooks?: { before: () => void; after: () => void }): Promise<number> {
+export async function runCli(args: string[], hooks?: { before: () => void | Promise<void>; after: () => void }): Promise<number> {
   startCliProfile();
   const started = performance.now();
   let executeMs = 0;
   try {
     if (!args.length || args.includes("--help") || args[0] === "help") { process.stdout.write(`${HELP}\n`); return 0; }
     const { command, options } = parseCliArguments(args);
-    hooks?.before();
+    await hooks?.before();
     const executeStart = performance.now();
     const value = await execute(stringValue(command, "command"), options);
     executeMs = performance.now() - executeStart;
