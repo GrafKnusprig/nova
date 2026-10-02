@@ -40,6 +40,10 @@ experiment or result from an implementation record. Reuse/update existing
 nodes by ID, create only genuinely new project knowledge, link related topics,
 and ask when identity or scope uncertainty would change the implementation.
 
+For an existing `.nova` project, the headless CLI manages a local cached worker automatically. Continue issuing normal commands; agents do not need to open or close a session. The worker refreshes cached knowledge before a read after database changes and exits after an idle timeout. Optional `worker-status` and `worker-stop` are diagnostics, not required workflow steps. JSON projects remain supported through direct calls.
+
+Root `llm_context` instructions always apply. Nodes may additionally contain `agent_guidance` with a `summary` and `instructions[]`, scoped to that node and its descendants. Context packs return relevant scopes in `guidance.topic_guidance`, including scopes for returned cross-category records. Preserve instruction text; report conflicting guidance rather than silently overriding project rules. Use `context-get --id ID`, `context-set --id ID`, and `instruction-add`/`instruction-remove --id ID` to maintain node guidance. Summaries are navigation aids; inspect original candidate records before updating or declaring information new. Context omission IDs may be truncated to 50; `omitted_node_count` and `omitted_ids_truncated` report the full extent of omissions.
+
 Use the CLI for project reads and mutations; do not inspect or modify the
 underlying storage directly. Pass the active project path through `--project`.
 During migration, leave the original JSON source intact and use the CLI's
@@ -258,10 +262,12 @@ link-add --source ID --target ID --relation RELATION
 link-remove --source ID --target ID --relation RELATION
 search --query TEXT [--category ID] [--limit N]
 context --query TEXT [--category ID] [--scope category|all] [--token-budget N] [--related-depth N]
-context-get
-context-set --summary TEXT|--summary-file FILE
-instruction-add --instruction TEXT|--instruction-file FILE
-instruction-remove --instruction TEXT|--instruction-file FILE
+context-get [--id ID]
+context-set [--id ID] --summary TEXT|--summary-file FILE
+instruction-add [--id ID] --instruction TEXT|--instruction-file FILE
+instruction-remove [--id ID] --instruction TEXT|--instruction-file FILE
+worker-status
+worker-stop
 tag-define --tag TAG --description TEXT|--description-file FILE
 tag-remove --tag TAG
 migration-status
@@ -302,7 +308,7 @@ editing is unavoidable, preserve all application-managed fields and run
   collision-checked lowercase UUIDv4 IDs. IDs never depend on position or title.
 - Required node fields are `id`, `title`, non-empty unique `tags`, `main_tag`,
   `summary`, ISO-8601 `created_at` and `modified_at`, `children`, and `links`.
-  `rationale` is optional. `main_tag` must occur in `tags`.
+  `rationale` is optional. Optional `agent_guidance` contains a string `summary` and string array `instructions`, scoped to the node and descendants. `main_tag` must occur in `tags`.
 - `created_at` never changes; content edits update `modified_at`.
 - `children` and `links` are arrays even when empty. Link targets exist, differ
   from their source, and use lowercase kebab-case relations.

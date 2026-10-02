@@ -9,6 +9,7 @@ export interface MapNode {
   main_tag: string;
   summary: string;
   rationale?: string;
+  agent_guidance?: { summary: string; instructions: string[] };
   created_at: string;
   modified_at: string;
   children: MapNode[];

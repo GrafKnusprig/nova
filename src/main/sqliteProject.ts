@@ -1,8 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
-import { accessSync, closeSync, mkdirSync, openSync, promises as fs, rmSync } from "node:fs";
+import { accessSync, closeSync, mkdirSync, openSync, promises as fs, realpathSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { measureCliPhase } from "./cliProfile";
 import { assertObject, flattenNodes, nodes, projectRootId, stringValue, validateMap, VIEWER_VERSION, type JsonObject } from "./project";
 
 export const NOVA_DATABASE_VERSION = 1;
@@ -17,6 +18,10 @@ function parseJson<T>(raw: unknown, label: string): T {
 }
 
 function openDatabase(filePath: string): DatabaseSync {
+  return measureCliPhase("sqlite.open", () => openDatabaseUnmeasured(filePath));
+}
+
+function openDatabaseUnmeasured(filePath: string): DatabaseSync {
   let db: DatabaseSync;
   try { db = new DatabaseSync(filePath); }
   catch (error) { throw new Error(`Could not open NOVA database ${filePath}: ${error instanceof Error ? error.message : String(error)}`); }
@@ -158,7 +163,7 @@ function loadDocument(db: DatabaseSync): JsonObject {
   const contextRow = db.prepare("SELECT data_json FROM project_context WHERE singleton=1").get() as DatabaseRow | undefined;
   const viewRow = db.prepare("SELECT data_json FROM project_view WHERE singleton=1").get() as DatabaseRow | undefined;
   if (!info || !contextRow || !viewRow) throw new Error("The NOVA database is missing required project metadata.");
-  const nodeRows = db.prepare("SELECT id,parent_id,sort_order,title,summary,rationale,tags_json,main_tag,created_at,modified_at,extra_json FROM nodes ORDER BY parent_id,sort_order").all() as DatabaseRow[];
+  const nodeRows = measureCliPhase("sqlite.select-nodes", () => db.prepare("SELECT id,parent_id,sort_order,title,summary,rationale,tags_json,main_tag,created_at,modified_at,extra_json FROM nodes ORDER BY parent_id,sort_order").all()) as DatabaseRow[];
   const nodeMap = new Map<string, JsonObject>();
   for (const row of nodeRows) {
     const id = stringValue(row.id, "database node id");
@@ -184,7 +189,7 @@ function loadDocument(db: DatabaseSync): JsonObject {
     if (!parent || !child) throw new Error("The NOVA database contains an orphan hierarchy record.");
     (parent.children as JsonObject[]).push(child);
   }
-  const linkRows = db.prepare("SELECT source_id,target_id,relation FROM links ORDER BY source_id,sort_order").all() as DatabaseRow[];
+  const linkRows = measureCliPhase("sqlite.select-links", () => db.prepare("SELECT source_id,target_id,relation FROM links ORDER BY source_id,sort_order").all()) as DatabaseRow[];
   for (const row of linkRows) {
     const source = nodeMap.get(stringValue(row.source_id, "database link source"));
     if (!source) throw new Error("The NOVA database contains a link with a missing source.");
@@ -203,7 +208,7 @@ function loadDocument(db: DatabaseSync): JsonObject {
     nodes: [root],
     view: parseJson<JsonObject>(viewRow.data_json, "view state"),
   };
-  return validateMap(document);
+  return measureCliPhase("sqlite.validate", () => validateMap(document));
 }
 
 function transaction<T>(db: DatabaseSync, callback: () => T): T {
@@ -364,27 +369,120 @@ export async function readJsonProjectForImport(filePath: string): Promise<JsonOb
 }
 
 export function readSqliteProject(filePath: string): { document: JsonObject; revision: string } {
+  const retained = retainedSession(filePath);
+  if (retained) return retained.read();
   const db = openDatabase(filePath);
   try {
-    const document = loadDocument(db);
-    return { document, revision: JSON.stringify(document) };
-  } finally { db.close(); }
+    const document = measureCliPhase("sqlite.load-document", () => loadDocument(db));
+    return { document, revision: measureCliPhase("sqlite.revision-json", () => JSON.stringify(document)) };
+  } finally { measureCliPhase("sqlite.close", () => db.close()); }
 }
 
 export function searchSqliteIndex(filePath: string, query: string, limit = 100): Map<string, number> {
+  const retained = retainedSession(filePath);
+  if (retained) return retained.search(query, limit);
+  const db = openDatabase(filePath);
+  try { return searchIndexOnConnection(db, query, limit); } finally { db.close(); }
+}
+
+function searchIndexOnConnection(db: DatabaseSync, query: string, limit: number): Map<string, number> {
   const terms = [...new Set(query.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().match(/[a-z0-9]+/g) ?? [])]
     .filter((term) => term.length > 1);
   if (!terms.length) return new Map();
   const expression = terms.map((term) => `"${term.replace(/"/g, '""')}"*`).join(" OR ");
-  const db = openDatabase(filePath);
   try {
-    const rows = db.prepare(`SELECT node_id, bm25(nodes_fts, 0, 8, 2, 1, 1) AS rank
-      FROM nodes_fts WHERE nodes_fts MATCH ? ORDER BY rank LIMIT ?`).all(expression, limit) as DatabaseRow[];
+    const rows = measureCliPhase("sqlite.fts", () => db.prepare(`SELECT node_id, bm25(nodes_fts, 0, 8, 2, 1, 1) AS rank
+      FROM nodes_fts WHERE nodes_fts MATCH ? ORDER BY rank LIMIT ?`).all(expression, limit)) as DatabaseRow[];
     return new Map(rows.map((row) => [stringValue(row.node_id, "FTS node id"), Math.max(0, 100 - Number(row.rank) * 10)]));
   } catch (error) {
     if (error instanceof Error && /fts5: syntax error/i.test(error.message)) return new Map();
     throw error;
-  } finally { db.close(); }
+  }
+}
+
+const retainedSessions = new Map<string, SqliteReadSession>();
+function retainedSession(filePath: string): SqliteReadSession | undefined {
+  if (!retainedSessions.size) return undefined;
+  return retainedSessions.get(path.resolve(filePath)) ?? retainedSessions.get(realpathSync(filePath));
+}
+
+function freezeSnapshot(value: unknown): void {
+  if (!value || typeof value !== "object" || Object.isFrozen(value)) return;
+  for (const nested of Object.values(value)) freezeSnapshot(nested);
+  Object.freeze(value);
+}
+
+/** Worker-owned immutable snapshot. No transaction survives a request. */
+export class SqliteReadSession {
+  private db?: DatabaseSync;
+  private identity: string;
+  private dataVersion = -1;
+  private snapshot?: { document: JsonObject; revision: string };
+  private byId = new Map<string, JsonObject>();
+  private searches = new Map<string, Map<string, number>>();
+  private active = false;
+  private generation = 0;
+  private reloads = 0;
+
+  constructor(readonly filePath: string) {
+    this.identity = this.fileIdentity();
+    this.db = openDatabase(filePath);
+  }
+  private fileIdentity(): string { const stat = statSync(this.filePath); return `${stat.dev}:${stat.ino}`; }
+  begin(): void {
+    if (this.active) throw new Error("A cached read request is already active.");
+    const identity = this.fileIdentity();
+    if (identity !== this.identity) {
+      this.db?.close(); this.db = undefined; this.identity = identity;
+      this.snapshot = undefined; this.dataVersion = -1;
+    }
+    this.db ??= openDatabase(this.filePath);
+    const db = this.db;
+    db.exec("BEGIN"); this.active = true;
+    try {
+      // Pin a read snapshot before comparing the connection-local change marker.
+      db.prepare("SELECT root_node_id FROM project_info WHERE singleton=1").get();
+      const version = Number(db.prepare("PRAGMA data_version").get()?.data_version ?? 0);
+      if (!this.snapshot || version !== this.dataVersion) {
+        const document = measureCliPhase("cache.reload", () => loadDocument(db));
+        const revision = measureCliPhase("cache.revision-on-change", () => JSON.stringify(document));
+        const byId = rawNodeMap(document);
+        freezeSnapshot(document);
+        this.snapshot = { document, revision }; this.byId = byId;
+        this.searches.clear(); this.dataVersion = version; this.generation++; this.reloads++;
+      }
+    } catch (error) { this.end(); throw error; }
+  }
+  end(): void { if (this.active) { this.db!.exec("ROLLBACK"); this.active = false; } }
+  read(): { document: JsonObject; revision: string } {
+    if (!this.active || !this.snapshot) throw new Error("Cached reads require an active request snapshot.");
+    return this.snapshot;
+  }
+  node(id: string): JsonObject | undefined { this.read(); return this.byId.get(id); }
+  search(query: string, limit: number): Map<string, number> {
+    this.read();
+    const key = `${limit}:${query}`;
+    const cached = this.searches.get(key);
+    if (cached) return cached;
+    const result = searchIndexOnConnection(this.db!, query, limit);
+    if (this.searches.size >= 64) this.searches.delete(this.searches.keys().next().value!);
+    this.searches.set(key, result); return result;
+  }
+  status(): JsonObject { return { generation: this.generation, reload_count: this.reloads, node_count: this.byId.size, query_cache_size: this.searches.size }; }
+  close(): void { this.end(); this.db?.close(); this.db = undefined; this.snapshot = undefined; this.byId.clear(); this.searches.clear(); }
+}
+
+export function retainSqliteReadSession(filePath: string): SqliteReadSession {
+  const resolved = path.resolve(filePath);
+  if (retainedSessions.has(resolved)) throw new Error("This project already has a retained read session.");
+  const session = new SqliteReadSession(resolved); retainedSessions.set(resolved, session); return session;
+}
+export function releaseSqliteReadSession(filePath: string): void {
+  const resolved = path.resolve(filePath), session = retainedSessions.get(resolved);
+  retainedSessions.delete(resolved); session?.close();
+}
+export function findCachedSqliteNode(filePath: string, id: string): JsonObject | undefined {
+  return retainedSession(filePath)?.node(id);
 }
 
 export function watchSqliteProject(filePath: string): { readChanged(): { document: JsonObject; revision: string } | undefined; close(): void } {
@@ -432,13 +530,13 @@ export function mutateSqliteProject(filePath: string, mutation: (document: JsonO
   const db = openDatabase(filePath);
   try {
     return transaction(db, () => {
-      const before = loadDocument(db);
-      const after = structuredClone(before);
+      const before = measureCliPhase("sqlite.load-document", () => loadDocument(db));
+      const after = measureCliPhase("sqlite.clone", () => structuredClone(before));
       const result = mutation(after);
       after.viewer_version = stringValue(before.viewer_version, "viewer_version");
-      validateMap(after);
-      applySqliteMutation(db, before, after);
-      return { document: loadDocument(db), result };
+      measureCliPhase("sqlite.validate-candidate", () => validateMap(after));
+      measureCliPhase("sqlite.apply-mutation", () => applySqliteMutation(db, before, after));
+      return { document: measureCliPhase("sqlite.load-document", () => loadDocument(db)), result };
     });
   } finally { db.close(); }
 }

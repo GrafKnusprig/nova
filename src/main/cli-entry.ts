@@ -1,4 +1,8 @@
-import { runCli } from "./cli";
+import { forwardCliToWorker, runWorker } from "./cliWorker";
 
-const cliIndex = process.argv.indexOf("cli");
-void runCli(process.argv.slice(cliIndex >= 0 ? cliIndex + 1 : 2)).then((code) => { process.exitCode = code; });
+const args = process.argv.slice(process.argv[2] === "cli" ? 3 : 2);
+void (async () => {
+  if (args[0] === "__nova-worker") { await runWorker(args.slice(1)); return; }
+  try { process.exitCode = await forwardCliToWorker(args) ?? await (await import("./cli")).runCli(args); }
+  catch (error) { process.stderr.write(`${JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) })}\n`); process.exitCode = 1; }
+})();

@@ -168,6 +168,35 @@ The installer sets the per-user `NOVA_CLI` environment variable to the sidecar's
 
 The installer also places the canonical `AGENTS.md` beside `NOVA.exe`. Creating a project in NOVA or with `NOVA-CLI.exe init` copies that guidance into the new project directory. For existing projects, **File → Init AGENTS.md in Project** replaces the project-local file with the installed version.
 
+### Cached agent retrieval
+
+The headless CLI automatically reuses a local worker for an existing `.nova` project. Agents keep using ordinary `context`, `search`, `get`, and mutation commands; no session setup or teardown is needed. The worker keeps a validated immutable map snapshot, category and node directories, normalized original text with ancestor-title context, incoming/outgoing link indexes, and bounded query caches. Only selected records and context packs are serialized for output. Whole-map loading, validation and revision serialization happen once on startup and again after a database change, rather than on every read.
+
+Before each read, the worker checks file identity and SQLite's connection-local `data_version` inside a request-scoped read transaction. It refreshes the snapshot after desktop or other-process commits, and reopens a replaced database. A request sees one consistent snapshot. Writes retain the existing transactional mutation implementation; they trigger a refresh before the next cached read. The first version rebuilds the cache after a change, rather than tracking individual changed rows. Memory therefore scales with map content; it is not a summary-only cache.
+
+Workers exit after five minutes with no pending requests. Set `NOVA_CLI_IDLE_MS` to change this timeout. `worker-status --project FILE.nova` reports the worker PID, cache generation, reload count and timeout; `worker-stop --project FILE.nova` closes it after queued work. These are optional diagnostics. `NOVA_CLI_WORKER=0` uses direct execution for troubleshooting. `NOVA_CLI_REQUIRE_WORKER=1` makes worker startup failures explicit; ordinary commands otherwise fall back to direct execution if startup fails before submission. A submitted mutation is never automatically retried after an interrupted response. Source and bundle fingerprints keep incompatible workers separate. JSON projects, creation/import/migration, and the legacy `NOVA.exe cli` path remain direct.
+
+Project guidance stays in root `llm_context`. Optional node `agent_guidance` contains `{ summary, instructions[] }` and applies to that node and its descendants. Manage it with `context-set --id ID`, `instruction-add --id ID`, `instruction-remove --id ID`, and `context-get --id ID`. Context packs list applicable scopes explicitly, including scopes for returned cross-category records. Project instructions always apply; topic instructions supplement them and conflicts should be reported. Mandatory instructions and exact duplicate candidates can exceed a requested context budget and are never silently discarded. Omitted IDs are capped at 50, with total counts and a truncation flag. Summaries orient the agent; original text remains searchable and original records remain available by stable ID.
+
+This implements deterministic context retrieval with hierarchy metadata and FTS5, without external embedding calls or generated LLM digests. The integrated desktop assistant currently calls project helpers directly rather than invoking the CLI, so it does not yet use the retained worker or these context tools. Its integration is separate future work. The shared retrieval and storage modules can support that integration.
+
+### CLI performance troubleshooting
+
+Use a Node runtime with `node:sqlite` and FTS5 support (the packaged CLI uses Node 22). Generate a separate synthetic database through the CLI; an existing destination is never overwritten. Node counts include the root. The seed reproduces IDs and content. `--branching` controls hierarchy breadth, `--summary-chars` controls text volume, and `--links-per-node` controls semantic link density. Fixtures contain explicitly synthetic methods and do not modify the active knowledge map.
+
+```powershell
+NOVA-CLI.exe benchmark-generate --project benchmark-300.nova --nodes 300 --branching 6 --summary-chars 1000 --links-per-node 2 --seed 42
+npm run benchmark:cli -- --sizes 300,1000,10000 --repeats 5
+```
+
+The benchmark builds a portable Node bundle, creates fixtures in a fresh `out/benchmarks/<timestamp>` directory, and saves raw samples, machine details, median/p95 timings, and phase timings in `report.json`. It measures `context-get`, leaf `get`, `search`, `context`, and real `update` operations. Options include `--warmups`, `--out-dir`, and the generator dimensions above. `--include-npm` measures direct `npm run cli`; `--include-worker` measures the bundled client over IPC and stops its workers afterward. The output directory must not already exist. Run on the affected machine; the portable bundle is not the Windows packaged executable.
+
+Default modes are a fresh direct bundled process, a fresh direct source process using `node --import tsx`, repeated direct calls within one process (`warm`), and repeated calls with a retained connection and snapshot (`cached`). Warm mode still reloads the graph; cached mode excludes initial cache filling through warmup and measures reuse. Fresh runs use the operating system's normal file cache, not a cold disk cache. Profiling has overhead; with five samples p95 is the maximum. In-process modes count serialized output bytes but discard output, whereas fresh client modes capture output through a pipe. A repeated query benefits from query caches; use different queries and writes to assess misses and invalidation costs. npm/tsx startup overhead still exists with the npm launcher; use the packaged headless client for a lightweight invocation.
+
+Set `NOVA_CLI_PROFILE=1` to profile an ordinary CLI call, including a call on the affected real project. Result JSON stays on stdout; one timing record is emitted on stderr. Timings distinguish connection opening, node/link queries, document loading, validation, revision JSON, FTS queries, mutation cloning/diff application, and output serialization/enqueue. `sqlite.load-document` includes queries and validation: do not add overlapping phases. Internal timing starts after module imports; compare it with elapsed process time to estimate launcher/import/exit overhead. It does not measure agent tool scheduling or context ingestion.
+
+The local worker manages its lifetime through the idle timeout and signal cleanup. Connection reuse, snapshot reuse and prepared context indexes address separate costs; mutation work and agent tool scheduling are separate from cached reads. Profile cache fills and unchanged reads separately.
+
 ## The short version
 
 > NOVA is a memory layer for work that has structure.
