@@ -1,233 +1,126 @@
-# Open TODOs, issues and ideas
+# Open work and implementation status
 
-## Future work / ideas
+Updated 2026-10-02. Active projects use `.nova` databases; JSON is for portable
+backups. See [README.md](README.md) for app setup and [AGENTS.md](AGENTS.md) for
+the agent workflow. The project knowledge map retains implementation decisions,
+validation evidence, and limitations.
 
-- License under MIT and obtain an application signing certificate.
-- Establish a GitHub build pipeline with a SignPath Foundation code-signing certificate.
+## Open work
 
-### Local offline project storage and assistant context
+### Desktop assistant: contextual retrieval and cache integration
 
-**Status:** Implementation is in progress on `feature/sqlite-agent-context`. JSON remains supported for compatibility. The goal is one SQLite `.nova` database as the active local project, with the CLI as the agent-facing storage boundary. SQLite WAL permits concurrent readers and one writer at a time; competing writes must serialize or return a clear conflict.
+- [ ] Give the built-in AI Assistant the same task-scoped context retrieval and
+  cache benefits as external IDE agents. It currently uses direct project
+  callbacks, its own overview/search/get tools, and whole-document reads.
+- [ ] Choose the shared backend integration in Electron main; reuse storage and
+  retrieval modules rather than assuming the desktop must spawn CLI commands.
+- [ ] Return root guidance, applicable node guidance, category orientation,
+  original candidate content, paths, and useful semantic neighbors together.
+  Preserve global exact ID/title checks and explicit omissions.
+- [ ] Keep context preparation out of the edit response: respond after a
+  successful database commit, prepare in the background, and make subsequent
+  reads wait when the cache is behind. Reject obsolete rebuild results and
+  handle external changes and project switching.
+- [ ] Preserve Draft/Edit/Full enforcement, one-task approvals, provider support,
+  message queues, autosave, editor conflicts, and renderer synchronization.
+- [ ] Verify Chat and Add note workflows, own/external edits, scoped instructions,
+  duplicate checks, and project isolation. Measure complete assistant turns,
+  not only storage operations.
 
-Use one SQLite database per project as authoritative local storage and retain JSON as portable import/export. CortexaDB is a local retrieval engine, not an agent context manager or LLM. Its `add` inserts unconditionally and it does not deduplicate or update existing knowledge. Its vector search and outgoing-edge expansion do not supply NOVA's persistent research instructions, global duplicate checks, category-aware context packing, or map-writing policy. Use CortexaDB as a design reference, not a direct dependency. Start with SQLite FTS5 and deterministic graph retrieval; consider local embeddings only if measured recall requires them. References: [CortexaDB](https://github.com/anaslimem/CortexaDB), [SQLite WAL](https://www.sqlite.org/wal.html), [SQLite-Memory](https://github.com/sqliteai/sqlite-memory), and [mcp-memory-sqlite](https://github.com/spences10/mcp-memory-sqlite).
+This is open work. The CLI cache is implemented; its desktop assistant
+integration is not. The backend design and integration tests remain to be done.
+Knowledge-map task: `280b9b64-c5da-4195-b2de-7e9c06c10818`.
 
-#### Implemented in the current branch
+### Real agent workflow and retrieval quality
 
-- Added a versioned SQLite `.nova` schema with normalized node hierarchy, ordered semantic links, project context, view state, unknown node-field preservation, foreign keys, WAL, a busy timeout, and FTS5 indexes.
-- Routed shared project read/write/create and mutation APIs through `.nova` while retaining schema-7 JSON support. CLI mutations compare the current document under a write lock and apply transactional row-level changes. GUI snapshot saves remain transactional and reject stale revisions.
-- Added `migrate`, `import`, `export`, and `migration-status`. Schema-7 JSON imports directly; schema-6 JSON is upgraded in memory without rewriting the source. Migration preserves existing node IDs and map state, refuses an existing destination, and leaves the source intact. Export refuses overwrite unless `--overwrite` is passed.
-- Added desktop File > Import JSON and File > Export JSON flows. Normal Open/New/Save As dialogs are restricted to `.nova`; startup offers migration for a remembered legacy JSON path and automatically prefers an existing sibling `.nova` database. Import errors show the schema or validation failure.
-- Added FTS5 candidate ranking for `.nova` `search` and `context`, retaining global exact ID and normalized-title checks, category indexes, hierarchy/link neighborhood, mandatory project guidance, and explicit context-pack truncation. `context --scope all` includes the complete map when it fits its budget. Token sizing remains an approximate character-based estimate.
-- Wired Electron open/new/save, remembered project paths, SQLite external-change polling, and assistant document access to the shared project API. The renderer still sends full-document snapshots, but SQLite now diffs them under the write lock and persists only changed node/link/context/view rows. Loading and IPC still reconstruct/send the full graph.
-- Updated `AGENTS.md` with `.nova` support, migration workflow, agent retrieval/write policy, and the rule against direct database access. Agent guidance avoids adding emoji, while project validation preserves Unicode text supplied by users.
+- [ ] Measure tool-call count and end-to-end waiting in a representative agent
+  task on the affected project. Separate launcher/runtime time, cache waiting,
+  retrieval, output size, and agent scheduling/context ingestion.
+- [ ] Compare context-first retrieval with consecutive search/get reads. Include
+  read-before-decision/edit-last workflows, immediate reads after writes,
+  varied queries, cold starts, and external updates.
+- [ ] Evaluate duplicate recall and update-versus-create behavior on realistic
+  maps: paraphrases, aliases, cross-category matches, contradictions, rejected
+  alternatives, and linked evidence. Current exact-match tests do not establish
+  broad semantic recall.
+- [ ] Consider tokenizer improvements, local embeddings, reranking, or derived
+  digests only when measured retrieval limitations justify them. Keep original
+  evidence and mandatory instructions available.
 
-#### Remaining implementation and review
+### Storage and larger-map costs
 
-1. **Reduce renderer transfer and read costs.** Replace full-document load/IPC where beneficial with focused reads while preserving graph rendering, undo/redo, view state, cross-links, and stale-write behavior. SQLite writes now apply diffs; confirm connections close cleanly and document transient WAL sidecars.
-2. **Complete migration safeguards.** Add a non-mutating dry-run report with source and destination counts, IDs, hierarchy, and link verification. Improve interrupted-import recovery and backup/restore guidance. Migration must continue to leave the source JSON unchanged and refuse an existing destination.
-3. **Audit CLI semantics.** Keep `id` as a documented non-reserving UUID candidate for scripts, while preferring `create` because it returns the persisted ID. Document `list` as compact navigation and `get` as subtree retrieval. `export` provides the portable backup workflow; add a separate backup command only if it has a distinct need. Keep delete explicit and all commands headless with JSON output and nonzero errors.
-4. **Improve retrieval efficiency and quality.** Avoid loading the entire graph for bounded `.nova` queries; retrieve candidates, ancestors, descendants, and inbound/outbound links through indexed queries. Exact global IDs and normalized titles must remain visible even under a category filter. Consider a configured tokenizer and local semantic retrieval only after measuring recall on realistic maps. Category selection is a starting point, not a boundary.
-5. **Document packaged runtime compatibility.** Confirm `node:sqlite` and FTS5 in the packaged Electron and CLI runtime without native addon packaging. Document `.nova` location, migration/export, JSON compatibility, backup/restore, WAL sidecars, and conflict behavior. Keep initialized project-local `AGENTS.md` synchronized with the canonical file.
-6. **Verify before release.** Check import/export fidelity, Unicode preservation, control-character constraints, duplicate retrieval, context truncation, concurrent GUI/CLI access, migration failure handling, and packaged CLI access. Add regression tests for these cases when verification is authorized.
+- [ ] Reduce full-document renderer transfer and loading where beneficial,
+  preserving rendering, undo/redo, view state, cross-links, and stale-save checks.
+- [ ] Reduce write-path validation, cloning, document reload, and diff costs
+  without weakening transactional consistency. Background cache preparation
+  does not remove these database-write costs.
+- [ ] Evaluate selective external invalidation through a change journal or
+  persistent revisions. External cache refreshes currently rebuild the full
+  snapshot; dependency bookkeeping and memory still scale with graph size.
+- [ ] Measure memory and IPC overhead of raw data, prepared indexes, pending
+  documents, and helper-process snapshots on larger maps.
+- [ ] Extend backup/restore and interrupted-import verification as needed,
+  including stable IDs, hierarchy, links, Unicode, guidance, and workspace state.
+  Restore must preserve the JSON backup and refuse an existing destination.
 
-#### Paper-method task workflow
+### Windows release verification
 
-Read `AGENTS.md` and mandatory project guidance first. Identify the paper by DOI/title/authors; search globally for the source, method, and aliases; retrieve likely source, method, implementation, and decision nodes; check repository code separately; and inspect linked experiment/result/finding records. Report whether NOVA has a matching paper or method, what is implemented or attempted, what was evaluated, and where evidence is recorded. A map miss is not global novelty. Reuse stable IDs, distinguish source/method/implementation/results, link across categories, and record experiments/results only when performed. Ask only when paper identity or scope uncertainty would change the work.
+- [ ] Verify `node:sqlite` and FTS5 in the actual packaged CLI and Electron runtime.
+- [ ] Extend packaged smoke coverage to `.nova` projects, named-pipe transport,
+  helper-process IPC, fresh reads after own/external changes, idle shutdown,
+  crash recovery, and explicit stop. Current source and portable bundled tests
+  were run on macOS; they do not verify the Windows package.
+- [ ] Verify concurrent desktop/CLI work and clean release packaging with the
+  current canonical AGENTS.md and README instructions.
+- [ ] Decide how template initialization and updates should preserve custom
+  project instructions. Project creation and File > Init AGENTS.md currently
+  replace an existing project-local AGENTS.md.
 
+### Distribution
 
-# Local AI
+- [ ] License under MIT and obtain an application signing certificate.
+- [ ] Establish a GitHub build pipeline and investigate SignPath Foundation
+  signing support.
 
-# 🚀 Step-by-Step Integration Guide: Local LLM in Node.js & Electron (Windows)
+### Local offline AI exploration
 
-This guide provides a production-ready blueprint to embed a Large Language Model (LLM) directly into your Electron desktop application for Windows. The model runs 100% locally on the user's machine, completely offline, with automatic CPU/GPU acceleration.
+- [ ] Evaluate an optional local inference provider with model/tool support,
+  practical Windows CPU/GPU and memory requirements, model licensing,
+  cancellation, permission enforcement, and installer/update behavior.
+- [ ] Keep inference off the renderer thread and measure a suitable worker or
+  separate-process design before selecting a native dependency or model.
 
----
+No local LLM is integrated. The earlier implementation sketch and storage
+research notes are preserved in [the planning archive](docs/archive/storage-and-local-ai-planning.md).
+Its examples are unverified historical material, not a production-ready guide.
 
-## 📋 Architecture Overview
+## Implemented
 
-Electron splits its workload into two main parts:
-1. **Main Process (Backend/Node.js):** Has full access to native system resources, file systems, and C++ bindings. **The LLM must run here** so it doesn't freeze your user interface.
-2. **Renderer Process (Frontend/UI):** Handles the HTML/CSS/JavaScript interface. It communicates safely with the Backend via Inter-Process Communication (IPC).
+- [x] SQLite `.nova` project storage with WAL, foreign keys, ordered hierarchy and
+  semantic links, context/view state, and unknown node-field preservation.
+- [x] Desktop `.nova` creation/open/save, JSON backup export/restore, and
+  external-change synchronization.
+- [x] Transactional CLI mutations; stale-revision checks for document saves
+  when an expected revision is supplied. Ordinary CLI updates do not compare
+  an agent's earlier retrieved revision.
+- [x] Deterministic FTS5 and graph context retrieval, global exact ID/title
+  matching, category orientation, scoped instructions, and explicit omissions.
+- [x] Automatic CLI worker discovery/startup, retained connections and snapshots,
+  direct stable-ID lookup, prepared context indexes, and bounded query caches.
+- [x] Background context preparation after committed CLI edits, selective reuse
+  of unchanged derived data, and external-change polling/preparation while idle.
+- [x] Freshness verification before every cached read; wait for preparation when
+  needed, reject obsolete jobs, and keep read transactions request-scoped.
+- [x] Idle timeout, authenticated project-bound transport, restart/recovery,
+  optional worker diagnostics, and no replay of interrupted submitted mutations.
+- [x] Synthetic database generator, phase profiling, and direct/cached/worker
+  benchmarks including own/external edit-followed-by-read cases.
+- [x] Cache/lifecycle tests and local synthetic benchmarks. The last full suite
+  passed 54 tests with main/preload/renderer type checks; Windows packaged and
+  real-agent workflow validation remain open above.
+- [x] Current AGENTS.md and README guidance for `.nova` projects, JSON backups,
+  Windows commands, context reuse, actual assistant permissions, and cache scope.
 
----
-
-## 🛠️ Phase 1: Dependencies & Model Setup
-
-### 1. Install Node Packages
-Run the following command in your Electron project directory to install the native wrapper for the C++ inference engine (`llama.cpp`):
-
-```bash
-npm install node-llama-cpp
-```
-
-### 2. Choose and Download a Model
-Local models must be in the optimized `.gguf` format. For general desktop deployment, you need a balanced model that works fast even on computers without an expensive graphics card.
-
-* **Recommended:** **`Qwen2.5-1.5B-Instruct-Q4_K_M.gguf`** (approx. 1.2 GB).
-* **Alternative:** **`Llama-3-8B-Instruct-Q4_K_M.gguf`** (approx. 4.8 GB, requires more RAM/VRAM but offers higher intelligence).
-* **Setup:** Create a new folder named `models/` inside your project root directory and paste the downloaded `.gguf` file there.
-
----
-
-## 💻 Phase 2: Core Code Implementation
-
-### 1. The Backend Backend (`main.js` / `index.js`)
-This script initializes the model in system memory and establishes a listener for incoming user prompts from the frontend.
-
-```javascript
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
-
-// Keep variables global so the model stays loaded in memory between prompts
-let getLlama, LlamaModel, LlamaContext, LlamaChatSession;
-let chatSession = null;
-
-async function initLLM() {
-    try {
-        // Dynamic import required because node-llama-cpp uses ES Modules (ESM)
-        const mod = await import("node-llama-cpp");
-        getLlama = mod.getLlama;
-        LlamaModel = mod.LlamaModel;
-        LlamaContext = mod.LlamaContext;
-        LlamaChatSession = mod.LlamaChatSession;
-
-        // 1. Initialize the core llama engine
-        const llama = await getLlama();
-        
-        // 2. Define the path to your GGUF file
-        const modelPath = path.join(__dirname, 'models', 'qwen2.5-1.5b-instruct-q4_k_m.gguf');
-
-        // 3. Load the model parameters
-        const model = new LlamaModel({ llama, modelPath });
-        
-        // 4. Set the Context Window (4096 is optimal for RAM efficiency)
-        const context = new LlamaContext({ 
-            model, 
-            contextSize: 4096 
-        });
-
-        // 5. Create a managed chat session (handles conversational history automatically)
-        chatSession = new LlamaChatSession({ context });
-        console.log("🤖 Local LLM successfully initialized and ready!");
-    } catch (error) {
-        console.error("❌ Failed to initialize LLM:", error);
-    }
-}
-
-function createWindow() {
-    const win = new BrowserWindow({
-        width: 900,
-        height: 700,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'), // Secure IPC bridge
-            contextIsolation: true,
-            nodeIntegration: false
-        }
-    });
-
-    win.loadFile('index.html');
-}
-
-// Boot up the LLM before opening the UI window
-app.whenReady().then(async () => {
-    await initLLM();
-    createWindow();
-});
-
-// Listen for text prompts sent from the frontend UI
-ipcMain.handle('send-to-llm', async (event, userPrompt) => {
-    if (!chatSession) {
-        return { success: false, error: "Model is still loading or failed to initialize." };
-    }
-    try {
-        // Generate response synchronously (waits until full text is generated)
-        const response = await chatSession.prompt(userPrompt);
-        return { success: true, text: response };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
-
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
-});
-```
-
-### 2. The Secure Bridge (`preload.js`)
-Exposes a safe, isolated API pathway to let the frontend send messages to the backend without risking full system access vulnerabilities.
-
-```javascript
-const { contextBridge, ipcRenderer } = require('electron');
-
-contextBridge.exposeInMainWorld('electronAPI', {
-    askAI: (prompt) => ipcRenderer.invoke('send-to-llm', prompt)
-});
-```
-
-### 3. The Frontend Interface UI (`renderer.js`)
-Handles your application layout interactions (triggers when clicking a button or pressing enter).
-
-```javascript
-const sendBtn = document.getElementById('send-btn');
-const inputField = document.getElementById('user-input');
-const responseArea = document.getElementById('chat-output');
-
-sendBtn.addEventListener('click', async () => {
-    const prompt = inputField.value.trim();
-    if (!prompt) return;
-
-    responseArea.innerText = "Thinking...";
-    inputField.value = ""; // Clear input field
-    
-    // Call the safe exposed bridge API
-    const result = await window.electronAPI.askAI(prompt);
-    
-    if (result.success) {
-        responseArea.innerText = result.text;
-    } else {
-        responseArea.innerText = "Error: " + result.error;
-    }
-});
-```
-
----
-
-## ⚡ Phase 3: Hardware Acceleration & Context Rules
-
-* **Zero-Config Hardware Switching:** `node-llama-cpp` compiles pre-built Windows binaries. During execution, it checks the computer hardware automatically:
-  1. **NVIDIA CUDA GPU detected:** Offloads the mathematical weights onto VRAM for lightning-fast speeds.
-  2. **Standard Integrated GPU/CPU:** Utilizes modern CPU instruction sets like `AVX2` or `AVX512` to deliver the best possible performance on normal laptops.
-* **Smart Memory Eviction:** The `LlamaChatSession` wrapper actively monitors your `contextSize` limit (4096 tokens). If your chat conversation grows too long, the system will seamlessly discard the oldest historical dialogue exchanges to prevent the Electron app from running out of memory or crashing.
-
----
-
-## 📦 Phase 4: Production Packaging (Windows)
-
-When compiling your application using `electron-builder` for production distribution, configure these absolute rules inside your **`package.json`**:
-
-### 1. Protect the ASAR Archive (`extraFiles`)
-Electron automatically compresses app files into a monolithic `.asar` archive file. Storing a 1.2+ GB model file inside the ASAR will result in terrible app startup delays. Always exclude it using `extraFiles`:
-
-```json
-"build": {
-  "appId": "com.yourcompany.localai",
-  "win": {
-    "target": ["nsis"]
-  },
-  "extraFiles": [
-    {
-      "from": "models/",
-      "to": "models/",
-      "filter": ["**/*"]
-    }
-  ]
-}
-```
-
-### 2. Rebuild Native Addons
-Because you are loading native C++ code directly into Node.js, run this utility once before building the installer executable to sync architecture formats:
-
-```bash
-npm install --save-dev @electron/rebuild
-npx electron-rebuild
-```
+Implementation and benchmark evidence are recorded in `nova.nova`. Completed
+CLI work does not imply desktop assistant integration or measured end-to-end
+agent latency savings.

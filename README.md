@@ -1,213 +1,208 @@
 <div align="center">
   <img src="images/NOVA_splash.png" alt="NOVA — Networked Organization & Visualization Assistant" width="820">
 
-  <h3>Your work does not happen in a list.<br>Why should its memory?</h3>
+  <h3>Connected knowledge for projects, work, and research.</h3>
 
   <p>
-    <strong>An automated, AI-assisted work, project, and research protocol.</strong><br>
-    NOVA turns the meaningful parts of an evolving project into a living knowledge network.
+    NOVA preserves the questions, decisions, evidence, and rationale behind an evolving project.<br>
+    Explore the knowledge graph, maintain it yourself, or work with an AI assistant.
   </p>
 
   <p>
-    <code>Electron</code> · <code>React</code> · <code>TypeScript</code> · <code>Schema 7</code> · <code>Local JSON</code> · <code>Windows</code>
+    <code>Windows</code> · <code>Local SQLite</code> · <code>.nova projects</code> · <code>JSON backups</code> · <code>Electron</code> · <code>React</code> · <code>TypeScript</code>
   </p>
 </div>
 
-<img src="images/screenshots/workspace.png" alt="The NOVA workspace showing the knowledge graph, AI Assistant, Inspector, tag filters, and Outline" width="100%">
+<img src="images/screenshots/workspace.png" alt="The NOVA workspace with the knowledge graph, AI Assistant, Inspector, tag filters, and Outline" width="100%">
 
----
+## What NOVA keeps
 
-## The anti-notebook
+A NOVA project is a semantic knowledge map. Nodes capture questions, methods, decisions, observations, experiments, results, limitations, and future work. Each node can include its reason, supporting evidence, and links to related knowledge.
 
-Most project notes become a graveyard of headings: long, linear, increasingly difficult to navigate, and detached from the decisions that created them.
+This structure helps answer:
 
-NOVA keeps the *externalized thought process* instead—the questions, decisions, rationale, evidence, experiments, limitations, failures, implementation history, and open work that make a project understandable.
-
-```text
-chronological notes                   NOVA
-──────────────────                    ────
-what happened next?         →         what belongs together?
-one document                →         nested concepts + semantic links
-manual housekeeping         →         AI-assisted maintenance
-search for a sentence       →         navigate the structure
-remember the context        →         preserve the rationale
-```
-
-The result is not a prettier list. It is a categorized, searchable and filterable network graph. Related work gathers into visible neighborhoods. Important hubs grow. Cross-cutting relationships remain visible. Regions of interest begin to form almost by themselves.
-
-<p align="center">
-  <img src="images/screenshots/knowledge-graph.png" alt="A close view of NOVA's linked and categorized knowledge graph" width="640">
-</p>
-
-## A protocol that works while you work
-
-NOVA is meant to answer questions ordinary notes cannot answer reliably:
-
-- Why was this architecture or method selected?
+- Why was an architecture or method selected?
 - Which alternatives were considered or rejected?
 - What evidence supports a finding?
-- Which experiment addresses which research question?
+- Which experiment addresses a research question?
 - What failed, what superseded it, and what remains unresolved?
-- What belongs in implementation, evaluation, discussion, or future work?
 
-The included [`AGENTS.md`](AGENTS.md) gives an IDE-integrated AI agent a durable maintenance contract. While the agent helps with the actual work, it also decides whether the interaction produced meaningful project knowledge. If it did, the agent extends the smallest appropriate part of the map, preserves rationale and provenance, creates useful semantic links, and validates the result. If it did not, the map stays untouched.
+Use NOVA for software projects, research, theses, investigations, and other work whose reasoning needs to remain understandable over time.
 
-That distinction matters: **automatic does not mean indiscriminate**. NOVA is designed to resist transcript dumping, duplicate notes, and ceremonial updates. It records the information needed to reconstruct the work—not every sentence spoken along the way.
+<p align="center">
+  <img src="images/screenshots/knowledge-graph.png" alt="NOVA's hierarchical knowledge graph with semantic links" width="640">
+</p>
 
-## Two ways to use NOVA
+## Install on Windows
 
-### 01 — Standalone
+Find Windows installers on [GitHub Releases](https://github.com/GrafKnusprig/nova/releases). Run the x64 installer named `NOVA-<version>-x64.exe`.
 
-Open a project, explore the graph, edit nodes, search, filter, rearrange the workspace, and use the built-in AI Assistant. OpenAI and FhGenie providers are supported directly in the application. (More will follow.)
+The installer includes the desktop app, the headless `NOVA-CLI.exe`, and the agent instructions. Using the installed app does not require a separate Node.js or Python installation. An API key and a provider connection are needed only for the built-in AI Assistant; manual editing and the CLI work locally.
 
-API credentials remain outside the project file and renderer. They are **encrypted with Electron's OS-backed secure storage**. Draft, Edit, and Full modes make the assistant's project permissions explicit, giving you the veto right to every change before it is applied.
+To start a project:
 
-### 02 — Beside an AI-enabled IDE
+1. Choose **File > New** and select a `.nova` database location.
+2. Give the project root a name and description, then add main topics and child nodes.
+3. Use **File > Open** to reopen an existing `.nova` project. Changes are saved automatically; **File > Save now** saves pending changes immediately.
 
-This is where NOVA becomes a background memory system for serious work. Keep the project JSON beside the code, research, or documentation. The included agent instructions and deterministic CLI let an IDE agent maintain the map as part of normal work—without asking you to manually curate a second record afterward.
+## Projects and backups
 
-The application watches the open project file, so external agent updates appear in the workspace. The file remains ordinary, portable JSON rather than an opaque database.
+**The `.nova` database is the active project. JSON is the portable backup format.** Knowledge, semantic links, guidance, and workspace state are stored together in the project database. SQLite may create temporary WAL sidecars while the project is open.
 
-## One workspace, several ways into the same knowledge
+| Action | Desktop command |
+|---|---|
+| Create a project | File > New |
+| Open a project | File > Open |
+| Save a separate database copy | File > Save As |
+| Create a JSON backup | File > Export JSON |
+| Restore a JSON backup into a new `.nova` database | File > Import JSON |
+
+Import keeps the backup unchanged and refuses to overwrite an existing database. Keep maintaining the restored `.nova` project through the app or CLI. Use the export/import commands for portable backups rather than editing a JSON copy alongside the active project.
+
+## Explore and edit the graph
+
+NOVA combines a hierarchy with semantic cross-links:
+
+- **Nested nodes** express ownership and strong topic membership.
+- **Links** express relationships such as `supports`, `depends-on`, `implements`, `supersedes`, `evaluates`, and `derived-from`.
+- **Tags** describe the kind of knowledge and its work area. A node's main tag determines its color.
+- **Content and Why fields** preserve the knowledge and its rationale.
+- **Semantic zoom and layout options** help navigate large maps. Layouts can emphasize hierarchy or relationships, with optional compact grouping.
+
+The dockable workspace includes Graph, Outline, Search, Inspector, AI Assistant, and Activity panels. Rearrange or pop out panels, and reopen them through **View > Panels**. Individual nodes can also have separate Node Property panels. Search and tag filters help narrow the visible knowledge. Saved workspace state includes expanded branches, positions, zoom, filters, and panel arrangement.
+
+External CLI edits appear in the open desktop project. An editor with an unsaved draft offers a comparison when incoming content changes. The Graph panel's **Live** option reveals branches containing incoming new or updated nodes.
 
 <table>
   <tr>
     <td width="33%" valign="top">
-      <img src="images/screenshots/inspector.png" alt="NOVA Inspector showing a node's tags, content, and rationale" width="100%">
+      <img src="images/screenshots/inspector.png" alt="Inspector with node tags, content, and rationale" width="100%">
       <br><strong>Knowledge with reasons</strong><br>
-      Nodes carry titles, tags, content, rationale, timestamps, children, and semantic links—not just loose text.
+      Edit content, rationale, tags, and semantic links.
     </td>
     <td width="33%" valign="top">
-      <img src="images/screenshots/ai-assistant.png" alt="NOVA's built-in project-scoped AI Assistant" width="100%">
+      <img src="images/screenshots/ai-assistant.png" alt="NOVA's project-scoped AI Assistant" width="100%">
       <br><strong>Project-scoped AI</strong><br>
-      Work conversationally in Draft, Edit, or Full mode through narrow, validated project operations.
+      Discuss knowledge or integrate notes with explicit write permissions.
     </td>
     <td width="33%" valign="top">
-      <img src="images/screenshots/search.png" alt="NOVA Search showing matching knowledge nodes and their tags" width="100%">
-      <br><strong>Find the concept</strong><br>
-      Search titles, summaries, and tags; filter the graph inclusively or exclusively; navigate through the Outline.
+      <img src="images/screenshots/search.png" alt="Search results for knowledge nodes" width="100%">
+      <br><strong>Find relevant knowledge</strong><br>
+      Search, filter by tags, and navigate the Outline.
     </td>
   </tr>
 </table>
 
-## What the graph knows
+## Built-in AI Assistant
 
-NOVA combines a strict hierarchy with free semantic relationships:
+Open the **AI Assistant** panel, select **OpenAI** or **FhGenie**, save the provider's API key, and choose an available model. Keys are encrypted using Electron's operating-system-backed secure storage and kept outside project files.
 
-- **Nested nodes** express ownership and strong topic membership.
-- **Links** express relationships such as `supports`, `depends-on`, `implements`, `supersedes`, `evaluates`, or `derived-from`.
-- **Tags** describe epistemic role and work area: decision, hypothesis, method, result, limitation, implementation, documentation, and more.
-- **A main tag** gives every node a stable color identity, while depth shading keeps hierarchy legible.
-- **Semantic zoom** reveals the right amount of detail for the current scale.
-- **Layout profiles** can emphasize hierarchy or relationships, with optional compact grouping.
-- **Collapsed-link bubbling** keeps relationships visible even when their exact endpoints are hidden inside a branch.
+Project storage stays local. Using the assistant sends your messages and the project context needed for its tools to the selected provider.
 
-The map stores its own view state—expanded branches, node positions, zoom, viewport, filters, and dock layout—so the working context travels with the knowledge.
+The assistant has two input modes:
 
-## Built for durable project memory
+- **Chat:** ask questions, discuss decisions, and request project work. Choose Default or Professional response style.
+- **Add note:** submit information to integrate into existing knowledge, including possible updates and semantic links. Draft permission previews the proposed changes.
 
-| Concern | NOVA's approach |
+Write permissions are enforced by the app:
+
+| Permission | Available actions |
 |---|---|
-| Open data | One human-readable JSON project file. |
-| Safe writes | Schema validation, atomic replacement, and stale-revision detection. |
-| Concurrent work | External-file watching and conflict-aware editor drafts. |
-| Stable identity | Collision-checked UUIDs and protected project-root semantics. |
-| Automation | A deterministic JSON-in/JSON-out CLI shared with the desktop domain layer. |
-| Portability | Project knowledge and workspace state travel together; machine-local paths and credentials do not. |
-| Focus | The maintenance contract records meaningful knowledge and rejects conversational bloat. |
+| Draft | Read, discuss, and propose changes. No project writing under Draft permissions. |
+| Edit | Create and update nodes and links. No node deletion. |
+| Full | Create, update, link, and permanently delete nodes. |
 
-## Get NOVA
+Edit and Full can apply permitted changes directly. Chat can request approval for a one-task permission increase when necessary. Use Draft when you want a preview. Chat and Add note submissions are queued, with each response kept beside its originating message.
 
-NOVA currently targets Windows.
+The built-in assistant operates through project tools inside the desktop app. It currently uses its own overview, search, and node-reading tools; the CLI context-pack and retained-cache integration described below applies to external IDE agents. Bringing that integration to the desktop assistant is tracked as [open work](TODO.md#desktop-assistant-contextual-retrieval-and-cache-integration).
 
-### Pre-built — Windows
+## Use NOVA beside an AI-enabled IDE
 
-Download the current x64 installer from **[GitHub Releases](https://github.com/GrafKnusprig/nova/releases/latest)** and run `NOVA-<version>-x64.exe`.
+Keep the `.nova` project and [`AGENTS.md`](AGENTS.md) beside your code, research, or documentation. A compatible agent reads the instructions, gathers relevant knowledge, performs the task, and maintains meaningful project knowledge as part of its work.
 
-The installer contains the complete desktop application. Node.js, Python, and a separate backend are not required to use it. Bring an existing schema-7 project JSON or start a new knowledge map from the application.
+The instructions require evidence, rationale, stable identities, duplicate checks, and useful relationships. They direct agents to reuse existing nodes and record meaningful findings rather than append a conversation transcript. After a related batch of map changes, the agent reviews `audit` findings and runs `validate`.
 
-### Self-built
+Creating a project in the desktop app or CLI copies the installed `AGENTS.md` into its directory. **File > Init AGENTS.md in Project** does the same for an existing project. Both operations replace an existing file at that location, so preserve any custom instructions you want to retain.
 
-Install the dependencies and start the development application:
+### Start with contextual retrieval
+
+The agent should begin with one task-specific `context` call. The resulting pack includes project guidance, a category index, relevant original node content, paths, semantic neighbors, and applicable topic instructions. Reuse that information; further `search` or `get` calls are needed only when relevant detail is missing or the question needs wider coverage.
+
+The Windows installer sets the per-user `NOVA_CLI` environment variable to the headless CLI's path. Start a new terminal or agent process after installation so it sees the variable:
+
+```powershell
+& $env:NOVA_CLI context --project .\my-project.nova --query "Review the storage design and its limitations"
+
+# Fetch additional detail when needed.
+& $env:NOVA_CLI search --project .\my-project.nova --query "Cache invalidation"
+& $env:NOVA_CLI get --project .\my-project.nova --id "<node-id>"
+```
+
+You can also invoke the installed executable by its full path, or use `& ".\NOVA-CLI.exe"` from its directory. The CLI does not initialize Electron or Chromium. Each project command receives an explicit `--project` path and returns JSON; failures return a nonzero exit code and a JSON error on stderr. `help` returns plain-text usage.
+
+For a focused pack, add `--category "<category-id>" --token-budget 6000`. For broad synthesis, use `--scope all --token-budget 16000`. Packs report omissions when content does not fit. Required guidance and exact duplicate candidates can exceed the requested budget. Exact ID and normalized-title matches remain visible across categories; a missing match does not establish global novelty. `get` returns a node subtree, while ancestor paths are supplied by `context` and `search`.
+
+Root `llm_context` stores project instructions. Optional node `agent_guidance` adds instructions scoped to that node and its descendants. Use `context-get`, `context-set`, `instruction-add`, and `instruction-remove`, with `--id` for node guidance. See [AGENTS.md](AGENTS.md) and CLI help for the mutation commands and full maintenance contract.
+
+### Automatic caching and fresh reads
+
+The headless CLI automatically starts or reuses a local worker for an existing `.nova` project. It retains the database connection, validated knowledge, prepared retrieval indexes, and bounded query caches. Agents issue ordinary commands and do not open or close sessions.
+
+Edits return after the database transaction commits. Context preparation follows in a separate helper, reusing unchanged derived data. External changes also trigger background preparation while the worker is idle. **Every read verifies freshness and waits if the cache has not caught up.** Outdated rebuild results are rejected. A read sees a consistent snapshot; changes committed after that snapshot is pinned are observed by the next read.
+
+The worker exits after five idle minutes and starts again when needed. `worker-status` and `worker-stop` are optional diagnostics. This retrieval uses original content, hierarchy metadata, and SQLite FTS5; it does not require embeddings or a model call to prepare context. Database writes still perform validation and transactional work. Cache reuse improves individual reads; fewer tool calls can also reduce agent overhead, but end-to-end savings depend on the agent workflow.
+
+SQLite transactions protect storage consistency. Ordinary CLI updates do not compare an agent's earlier retrieved revision. If you learn that another writer changed facts your decision depends on, retrieve those records and reconsider the edit.
+
+### Back up and validate from the CLI
+
+```powershell
+& $env:NOVA_CLI export --project .\my-project.nova --to .\my-project-backup.json
+& $env:NOVA_CLI import --project .\restored-project.nova --from .\my-project-backup.json
+& $env:NOVA_CLI audit --project .\my-project.nova
+& $env:NOVA_CLI validate --project .\my-project.nova
+```
+
+Import creates a new database. Export refuses to overwrite an existing backup unless `--overwrite` is explicit. `audit` reports knowledge-quality review candidates; it does not modify the project.
+
+## Build from source on Windows
+
+Use Node.js 22 with `node:sqlite` and SQLite FTS5 support, npm, and a local checkout. The build and packaging scripts target Windows.
 
 ```powershell
 npm ci
 npm run dev
 ```
 
-Build the renderer and Electron main/preload processes:
+Additional commands:
+
+| Command | Purpose |
+|---|---|
+| `npm run typecheck` | Check main, preload, and renderer TypeScript. |
+| `npm test` | Run model, project, assistant, retrieval, and worker tests. |
+| `npm run build` | Build the renderer and Electron main/preload code; copy agent instructions. |
+| `npm run build:cli` | Build the headless Windows CLI using the current Node runtime. |
+| `npm run test:packaged-cli` | Check the packaged CLI; defaults to `dist/win-unpacked/NOVA-CLI.exe`. |
+| `npm run package` | Build the app and CLI, then create the Windows installer. |
+
+The CLI executable is written to `out/cli/NOVA-CLI.exe`; the installer is written to `dist/NOVA-<version>-x64.exe`. Packaging embeds the Node runtime used to run the build. To test a standalone CLI build, use `npm run test:packaged-cli -- .\out\cli\NOVA-CLI.exe`. For source CLI work, use `npm.cmd run cli -- <command> --project .\my-project.nova`.
+
+### Performance troubleshooting
+
+Generate a separate synthetic database or run the benchmark against generated fixtures:
 
 ```powershell
-npm run build
+& $env:NOVA_CLI benchmark-generate --project .\benchmark-300.nova --nodes 300 --branching 6 --summary-chars 1000 --links-per-node 2 --seed 42
+npm run benchmark:cli -- --sizes 300,10000 --repeats 5 --include-refresh
 ```
 
-Create the Windows x64 installer yourself:
+The generator refuses existing destinations. Its seed reproduces IDs and content; node counts include the root. The benchmark builds a portable Node bundle and records samples, median/p95 timings, machine details, and phase timings in a fresh `out/benchmarks/<timestamp>/report.json`. It measures direct processes, reused processes, retained caches, and, with `--include-refresh`, the actual worker client and edit-followed-by-read scenarios. `--idle-gap-ms` controls the deliberate gap after an edit (default 1000 ms); that gap is excluded from measured edit/read latency.
 
-```powershell
-npm run package
-```
+Other options include `--include-worker`, `--include-npm`, `--warmups`, and `--out-dir`. Repeated queries benefit from caches; warmups exclude initial fills, and OS caches are not cleared. Portable bundled results do not establish packaged Windows or real-agent response times. With five samples, p95 is the maximum.
 
-The packaged installer is written to `dist/NOVA-<version>-x64.exe`.
+For an ordinary CLI call, set `$env:NOVA_CLI_PROFILE = "1"` to emit a timing record on stderr alongside normal result JSON on stdout. Timings include a read's `cache.ensure-current` phase. Phases can overlap, so do not add them together. Profiling excludes agent scheduling and context ingestion; `npm.cmd run cli` also retains npm/tsx launcher overhead.
 
-## Let an agent maintain a project
-
-Keep [`AGENTS.md`](AGENTS.md) next to the project file so a compatible IDE agent can discover the schema and maintenance policy. Every CLI command operates on the explicit path you provide—the project filename is yours to choose.
-
-```powershell
-NOVA-CLI.exe validate --project .\my-research-project.nova
-NOVA-CLI.exe audit --project .\my-research-project.nova
-NOVA-CLI.exe list --project .\my-research-project.nova
-NOVA-CLI.exe get --project .\my-research-project.nova --id <node-id>
-NOVA-CLI.exe migrate --project .\legacy-project.json --to .\my-research-project.nova
-NOVA-CLI.exe export --project .\my-research-project.nova --to .\my-research-project.json
-```
-
-`NOVA-CLI.exe` is the installer's headless automation sidecar: it does not initialize Electron or Chromium and remains independent of `ELECTRON_RUN_AS_NODE`. `NOVA.exe cli ...` remains available for compatibility in normal desktop environments. The desktop app opens and saves `.nova` databases. Use **File > Import JSON** to migrate a schema-6 or schema-7 `.json` project into a new database; schema 6 is upgraded in memory, the source stays unchanged, and an existing database is never overwritten. Use **File > Export JSON** for a portable copy. The CLI also supports search and bounded context retrieval, project creation, node creation and updates, moves, deletion, semantic links, LLM context, project instructions, and custom tag definitions. Every operation validates before and after mutation and emits machine-readable JSON.
-
-The installer sets the per-user `NOVA_CLI` environment variable to the sidecar's absolute path. New agent or terminal processes can therefore invoke it in PowerShell as `& $env:NOVA_CLI validate --project .\my-research-project.nova` without knowing NOVA's installation directory.
-
-The installer also places the canonical `AGENTS.md` beside `NOVA.exe`. Creating a project in NOVA or with `NOVA-CLI.exe init` copies that guidance into the new project directory. For existing projects, **File → Init AGENTS.md in Project** replaces the project-local file with the installed version.
-
-### Cached agent retrieval
-
-The headless CLI automatically reuses a local worker for an existing `.nova` project. Agents keep using ordinary `context`, `search`, `get`, and mutation commands; no session setup or teardown is needed. The worker keeps a validated immutable map snapshot, category and node directories, normalized original text with ancestor-title context, incoming/outgoing link indexes, and bounded query caches. Only selected records and context packs are serialized for output. Unchanged reads reuse this snapshot. Cache preparation runs in a private helper process; the worker publishes a complete prepared snapshot rather than exposing a partially updated cache.
-
-CLI edits return after the database transaction commits, without waiting for context-cache preparation. They immediately mark the previous cache as outdated and hand the committed document to the helper after responding. The helper reuses unchanged normalized text, paths, guidance, incoming-link lists and cached excerpts; it recalculates affected dependencies and clears query-result caches. Consecutive edits can supersede an unfinished job, so obsolete results are rejected. Validation, cloning, SQL diffing and the committed-document reload still belong to the write transaction; those costs have not been removed. Dependency bookkeeping still visits the graph, so this is selective derived-data reuse rather than a per-row journal.
-
-While idle, the worker polls for external commits every 250 ms and rebuilds their snapshot and context in the helper. Before every read it checks file identity and SQLite's connection-local `data_version` inside a request-scoped transaction. If the cache is behind, the read waits for preparation and checks again. File identity, the retained connection's change marker, and an own-write generation guard prevent an older rebuild from replacing newer state. A request sees one consistent snapshot; a commit made after that snapshot is pinned is observed on the next request. No SQLite transaction remains open while waiting for the helper. Clean replaced database files are reopened; replacing a live SQLite database requires correct handling of its WAL sidecars and is not a safe way to perform ordinary external edits.
-
-The helper is a separate process, so a timer does not merely move synchronous normalization into the worker's event loop. IPC transfer and final snapshot publication still cost time and memory, and reads wait when preparation has not finished. Full external refreshes remain necessary because `data_version` reports a change, not which rows changed. Memory scales with raw map content and prepared indexes, including temporary snapshots during preparation.
-
-Workers exit after five minutes with no pending requests. Set `NOVA_CLI_IDLE_MS` to change this timeout. `worker-status --project FILE.nova` reports the worker PID, cache generation, external/full reload count, incremental update count, pending preparation, idle refresh count and timeout; `worker-stop --project FILE.nova` closes it after queued work. These are optional diagnostics. `NOVA_CLI_WORKER=0` uses direct execution for troubleshooting. `NOVA_CLI_REQUIRE_WORKER=1` makes worker startup failures explicit; ordinary commands otherwise fall back to direct execution if startup fails before submission. A submitted mutation is never automatically retried after an interrupted response. Source and bundle fingerprints keep incompatible workers separate. JSON projects, creation/import/migration, and the legacy `NOVA.exe cli` path remain direct.
-
-Project guidance stays in root `llm_context`. Optional node `agent_guidance` contains `{ summary, instructions[] }` and applies to that node and its descendants. Manage it with `context-set --id ID`, `instruction-add --id ID`, `instruction-remove --id ID`, and `context-get --id ID`. Context packs list applicable scopes explicitly, including scopes for returned cross-category records. Project instructions always apply; topic instructions supplement them and conflicts should be reported. Mandatory instructions and exact duplicate candidates can exceed a requested context budget and are never silently discarded. Omitted IDs are capped at 50, with total counts and a truncation flag. Summaries orient the agent; original text remains searchable and original records remain available by stable ID.
-
-This implements deterministic context retrieval with hierarchy metadata and FTS5, without external embedding calls or generated LLM digests. The integrated desktop assistant currently calls project helpers directly rather than invoking the CLI, so it does not yet use the retained worker or these context tools. Its integration is separate future work. The shared retrieval and storage modules can support that integration.
-
-### CLI performance troubleshooting
-
-Use a Node runtime with `node:sqlite` and FTS5 support (the packaged CLI uses Node 22). Generate a separate synthetic database through the CLI; an existing destination is never overwritten. Node counts include the root. The seed reproduces IDs and content. `--branching` controls hierarchy breadth, `--summary-chars` controls text volume, and `--links-per-node` controls semantic link density. Fixtures contain explicitly synthetic methods and do not modify the active knowledge map.
-
-```powershell
-NOVA-CLI.exe benchmark-generate --project benchmark-300.nova --nodes 300 --branching 6 --summary-chars 1000 --links-per-node 2 --seed 42
-npm run benchmark:cli -- --sizes 300,1000,10000 --repeats 5
-```
-
-The benchmark builds a portable Node bundle, creates fixtures in a fresh `out/benchmarks/<timestamp>` directory, and saves raw samples, machine details, median/p95 timings, and phase timings in `report.json`. It measures `context-get`, leaf `get`, `search`, `context`, and real `update` operations. Options include `--warmups`, `--out-dir`, and the generator dimensions above. `--include-npm` measures direct `npm run cli`; `--include-worker` measures the bundled client over IPC and stops its workers afterward. `--include-refresh` additionally measures own and external edit → context-read workflows with zero deliberate delay and an idle gap (`--idle-gap-ms`, default 1000). It reports write latency, following-read latency, and the read freshness phase separately, excluding the deliberate gap. A zero gap still includes client startup; it is not zero elapsed time after commit. The output directory must not already exist. Run on the affected machine; the portable bundle is not the Windows packaged executable.
-
-Default modes are a fresh direct bundled process, a fresh direct source process using `node --import tsx`, repeated direct calls within one process (`warm`), and repeated calls with a retained connection and snapshot (`cached`). Warm mode still reloads the graph; cached mode excludes initial cache filling through warmup and measures reuse. Fresh runs use the operating system's normal file cache, not a cold disk cache. Profiling has overhead; with five samples p95 is the maximum. In-process modes count serialized output bytes but discard output, whereas fresh client modes capture output through a pipe. A repeated query benefits from query caches; use different queries and writes to assess misses and invalidation costs. npm/tsx startup overhead still exists with the npm launcher; use the packaged headless client for a lightweight invocation.
-
-Set `NOVA_CLI_PROFILE=1` to profile an ordinary CLI call, including a call on the affected real project. Result JSON stays on stdout; one timing record is emitted on stderr. Timings distinguish connection opening, node/link queries, document loading, validation, revision JSON, FTS queries, mutation cloning/diff application, and output serialization/enqueue. `sqlite.load-document` includes queries and validation: do not add overlapping phases. Internal timing starts after module imports; compare it with elapsed process time to estimate launcher/import/exit overhead. It does not measure agent tool scheduling or context ingestion.
-
-The local worker manages its lifetime through the idle timeout and signal cleanup. Connection reuse, snapshot reuse and prepared context indexes address separate costs; mutation work and agent tool scheduling are separate from cached reads. Profile cache fills and unchanged reads separately.
-
-## The short version
-
-> NOVA is a memory layer for work that has structure.
-
-Use it for software projects, research, theses, investigations, product development, long-running creative work—anything where the path, evidence, and reasoning matter as much as the final artifact.
-
-Instead of writing the retrospective at the end, let the project explain itself while it grows.
+Optional worker settings are `NOVA_CLI_IDLE_MS` (idle timeout at startup), `NOVA_CLI_WORKER=0` (direct execution), and `NOVA_CLI_REQUIRE_WORKER=1` (make worker startup failures explicit). A submitted mutation is never automatically replayed after an interrupted response.
 
 ---
 
