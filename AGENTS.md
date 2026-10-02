@@ -3,8 +3,8 @@
 ## IDE-agent task workflow and retrieval
 
 `AGENTS.md` defines how to work in this repository; the active project file
-(`nova.nova` or legacy `nova.json`) is the authoritative source for NOVA project
-knowledge. Do not load the complete map by default.
+(`nova.nova`) is the authoritative source for NOVA project knowledge. JSON files
+are portable backups, not active projects. Do not load the complete map by default.
 For non-trivial NOVA tasks, request a compact, task-specific context pack first:
 
 ```text
@@ -23,13 +23,25 @@ npm.cmd run cli -- search --project nova.nova --query "paper DOI or method name"
 npm.cmd run cli -- get --project nova.nova --id NODE_ID
 ```
 
-Category selection is a starting point, not a boundary. Search globally for
-exact IDs and normalized titles before proposing a new node; exact matches
-outside the selected category must remain visible. Fetch plausible matches by
-stable ID, including their parent path and semantic links. If the map has no
-match, say that it was not found in the map; absence is not evidence of global
-novelty. Inspect repository code separately, and inspect or request the paper
-when its identity or method is unclear.
+Use the context pack as the initial working context. It already includes root
+guidance, category orientation, relevant original node content, paths and links.
+Do not automatically follow it with `context-get`, `list`, `search`, or `get`
+for information already supplied. Request further reads only for missing or
+omitted detail, unresolved identity, or a wider question. Use a focused query
+or category to fill the specific gap; avoid repeatedly requesting the full map.
+
+Category selection is a starting point, not a boundary. Before creating a node,
+check globally for its exact ID or normalized proposed title and inspect
+plausible existing matches. A prior context/search result can satisfy this check
+when its query covers that identity; otherwise issue a focused global search.
+Exact matches outside the selected category must remain visible. Reuse original
+candidate content already included in the context pack; use `get --id ID` when
+you need the complete record or subtree. Ancestor paths come from `context` or
+`search`; `get` returns the node and its descendants with their semantic links,
+without an ancestor path. If the map has no match, say that it was not found in
+the map; absence is not evidence of global novelty. Inspect repository code
+separately, and inspect or request the paper when its identity or method is
+unclear.
 
 For paper-based implementation tasks, check source, method, implementation,
 decision, experiment, result, and limitation knowledge before coding. Report
@@ -40,15 +52,15 @@ experiment or result from an implementation record. Reuse/update existing
 nodes by ID, create only genuinely new project knowledge, link related topics,
 and ask when identity or scope uncertainty would change the implementation.
 
-For an existing `.nova` project, the headless CLI manages a local cached worker automatically. Continue issuing normal commands; agents do not need to open or close a session. Edits return after the database commit; context preparation then runs in a helper. The worker also checks for external changes while idle. Every read verifies freshness and waits if preparation has not caught up. It exits after an idle timeout. Optional `worker-status` and `worker-stop` are diagnostics, not required workflow steps. JSON projects remain supported through direct calls.
+For an existing `.nova` project, the headless CLI manages a local cached worker automatically. Continue issuing normal commands; agents do not need to open or close a session. Edits return after the database commit; context preparation then runs in a helper. The worker also checks for external changes while idle. Every read verifies freshness and waits if preparation has not caught up. It exits after an idle timeout. Optional `worker-status` and `worker-stop` are diagnostics, not required workflow steps.
 
-Root `llm_context` instructions always apply. Nodes may additionally contain `agent_guidance` with a `summary` and `instructions[]`, scoped to that node and its descendants. Context packs return relevant scopes in `guidance.topic_guidance`, including scopes for returned cross-category records. Preserve instruction text; report conflicting guidance rather than silently overriding project rules. Use `context-get --id ID`, `context-set --id ID`, and `instruction-add`/`instruction-remove --id ID` to maintain node guidance. Summaries are navigation aids; inspect original candidate records before updating or declaring information new. Context omission IDs may be truncated to 50; `omitted_node_count` and `omitted_ids_truncated` report the full extent of omissions.
+Root `llm_context` instructions always apply. Nodes may additionally contain `agent_guidance` with a `summary` and `instructions[]`, scoped to that node and its descendants. Context packs return relevant scopes in `guidance.topic_guidance`, including scopes for returned cross-category records. Preserve instruction text; report conflicting guidance rather than silently overriding project rules. Use `context-get --id ID`, `context-set --id ID`, and `instruction-add`/`instruction-remove --id ID` to maintain node guidance. Category overviews are navigation aids; inspect original candidate content before updating or declaring information new. Original content already returned in a context pack can satisfy this requirement; fetch missing detail only when needed. Context omission IDs may be truncated to 50; `omitted_node_count` and `omitted_ids_truncated` report the full extent of omissions.
 
 Use the CLI for project reads and mutations; do not inspect or modify the
 underlying storage directly. Pass the active project path through `--project`.
-During migration, leave the original JSON source intact and use the CLI's
-migration/import/export commands as documented. After map mutations, run
-`audit`, review findings about touched nodes, and run `validate`.
+After completing a batch of related map mutations, run `audit`, review findings
+about touched nodes, then run `validate`. Do not repeat these checks after each
+individual mutation unless a failure or unresolved finding requires it.
 
 Write project knowledge in professional scientific language. Do not add emoji
 or decorative symbols to node titles, summaries, rationales, or guidance.
@@ -56,29 +68,24 @@ Unicode text, including emoji supplied by the user or already present in the
 map, is valid project content: preserve it when relevant and do not reject or
 rewrite a project because it contains such characters.
 
-The CLI supports both schema-7 JSON and SQLite `.nova` projects. Prefer `.nova`
-for active work. Use `migration-status` to inspect a legacy JSON project,
-`migrate --project old.json --to new.nova` to make a separate database copy,
-`import --project new.nova --from old.json` to create a database from JSON, and
-`export --project new.nova --to backup.json` for a portable export. Migration
-and import accept schema-7 JSON and convert schema-6 JSON to schema 7 in memory;
-they never change the source JSON and refuse an existing destination. Export
-refuses to overwrite an existing JSON file unless `--overwrite` is explicit.
+Active projects use SQLite `.nova` databases. JSON is used for portable backups:
+`export --project project.nova --to backup.json` creates a backup;
+`import --project restored.nova --from backup.json` restores it into a new
+`.nova` database. Import leaves the backup unchanged and refuses an existing
+destination. Export refuses to overwrite a backup unless `--overwrite` is
+explicit. Do not edit or maintain the JSON backup as an active project.
 The `.nova` file is the project database; SQLite may use transient WAL sidecars
 while it is open. Agents must use the CLI and must never access SQLite directly.
-In the desktop app, Open, New, Save, and Save As use `.nova` databases. Use
-File > Import JSON to migrate a legacy JSON project to a new `.nova` file; the
-source stays unchanged. Use File > Export JSON to make a portable copy. If a
-remembered legacy JSON path has a sibling `.nova`, startup opens the database;
-otherwise startup offers the import flow.
+In the desktop app, Open, New, Save, and Save As use `.nova` databases.
+File > Export JSON creates a portable backup; File > Import JSON restores a
+backup into a new `.nova` file.
 
 ## Purpose and required workflow
 
-This checkout currently contains the legacy `nova.json`; use the CLI migration
-command to create a separate `nova.nova` database and keep the JSON source. New
-active projects should prefer `.nova`. A project file may use
-any filename; commands always operate on the path passed with `--project`. It is
-a semantic knowledge graph, not a chat transcript. It must remain
+Use the existing `nova.nova` database for this checkout. A project database may
+use any filename with the `.nova` extension; commands always operate on the path
+passed with `--project`. It is a semantic knowledge graph, not a chat transcript.
+It must remain
 understandable without the conversation that produced it and detailed enough to
 reconstruct research, methods, decisions, implementation history, experiments,
 evidence, findings, limitations, rejected alternatives, and future work.
@@ -95,7 +102,7 @@ For every interaction:
 5. Preserve rationale, provenance, evidence, dates, alternatives, and epistemic
    status when meaningful. Ask one concise question if an important rationale is
    materially uncertain.
-6. Prefer the project CLI for mutations. After changing project knowledge, run
+6. Use the project CLI for mutations. After the related mutation batch, run
    `audit`, review every finding involving a node you touched, then run
    `validate`. Do not rewrite the whole file unnecessarily.
 
@@ -229,19 +236,20 @@ with `supersedes`.
 
 ## Project CLI
 
-Use the packaged headless CLI instead of editing recursive JSON. On Windows
-PowerShell, invoke `& ".\NOVA-CLI.exe" <command> --project <project-file.json|project.nova>`;
+Use the packaged headless CLI for project operations. On Windows
+PowerShell, invoke `& ".\NOVA-CLI.exe" <command> --project <project.nova>`;
 installed releases also expose the absolute sidecar path in the per-user
 `NOVA_CLI` environment variable, so agents can invoke
-`& $env:NOVA_CLI <command> --project <project-file.json|project.nova>`. A newly installed
+`& $env:NOVA_CLI <command> --project <project.nova>`. A newly installed
 variable is visible to processes started after installation. `NOVA-CLI.exe`
 does not start Electron or Chromium and remains usable when
 `ELECTRON_RUN_AS_NODE` is set by an automation environment. In a source
 checkout where the packaged sidecar is unavailable, use
-`npm.cmd run cli -- <command> --project <project-file.json|project.nova>`.
+`npm.cmd run cli -- <command> --project <project.nova>`.
 
-Every command requires `--project <project-file.json|project.nova>`, emits JSON, and returns a
-nonzero exit code with a JSON error on failure.
+Project commands require `--project <project.nova>`, emit JSON, and return a
+nonzero exit code with a JSON error on failure. `help`/`--help` returns plain-text
+usage and does not require a project.
 
 ```text
 init --name "Project name" [--summary TEXT|--summary-file FILE]
@@ -270,10 +278,8 @@ worker-status
 worker-stop
 tag-define --tag TAG --description TEXT|--description-file FILE
 tag-remove --tag TAG
-migration-status
-migrate --to DATABASE.nova
-import --from SOURCE.json
-export --to DESTINATION.json [--overwrite]
+import --from BACKUP.json  Restore into a NEW .nova destination
+export --to BACKUP.json [--overwrite]
 ```
 
 `audit` is read-only and reports candidate knowledge-quality problems such as
@@ -288,16 +294,22 @@ changes only supplied fields. `delete` is permanent and requires `--yes`; the
 root cannot be deleted or moved. Text-file options are preferred for multiline
 or shell-sensitive content.
 
-The CLI validates before and after mutations and writes SQLite changes in a
-transaction with a stale-revision check. JSON writes remain atomic and reject a
-stale revision. SQLite FTS5 ranks retrieval candidates; global ID and normalized
-title checks still apply, including outside a requested category. Context packs
-include mandatory guidance, category summaries, ranked excerpts, semantic
-neighbors, and explicit omissions. `--scope all` requests the complete map when
-it fits; otherwise it reports omitted IDs and truncation. Token counts are
-approximate. If direct JSON
-editing is unavoidable, preserve all application-managed fields and run
-`validate` afterward.
+The CLI validates the current document and the proposed changes, and applies
+SQLite mutations in a transaction that reads the latest committed state while
+holding the writer lock. This protects the database transaction; it does not
+verify that an agent's earlier retrieved context is still current. Ordinary
+`update` commands have no expected-revision option. If you learn that another
+writer changed facts your decision depends on, retrieve the affected records
+and reconsider the edit. Cache freshness is handled by the CLI; do not add
+pre-write reads solely to maintain the cache.
+
+SQLite FTS5 ranks retrieval candidates; global ID and normalized-title checks
+still apply, including outside a requested category. Context packs include
+mandatory guidance, category summaries, ranked original content, semantic
+neighbors, and explicit omissions. `--scope all` requests content from all nodes
+when it fits; otherwise it reports omissions and truncation. This is a retrieval
+pack, not a backup export. Token counts are approximate. Use the backup commands
+for portable copies and the CLI for all active-project changes.
 
 ## Schema-7 invariants
 
@@ -317,7 +329,7 @@ editing is unavoidable, preserve all application-managed fields and run
 - Legacy `type`, `status`, `categories`, `date`, and `rationale_source` fields
   are invalid; their concepts belong in tags or timestamps.
 - `view` is application-managed project presentation state. Preserve it during
-  direct edits; knowledge changes normally do not need to modify it.
+  project edits; knowledge changes normally do not need to modify it.
 
 ## Ongoing maintenance and reconstruction goals
 
