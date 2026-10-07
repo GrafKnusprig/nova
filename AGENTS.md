@@ -8,7 +8,7 @@ are portable backups, not active projects. Do not load the complete map by defau
 For non-trivial NOVA tasks, request a compact, task-specific context pack first:
 
 ```text
-npm.cmd run cli -- context --project nova.nova --query "task description"
+& $env:NOVA_CLI context --project nova.nova --query "task description"
 ```
 
 The IDE reads this `AGENTS.md` separately. The context pack includes project
@@ -17,10 +17,10 @@ relevant node excerpts. Use its category ID to narrow detail retrieval when
 useful:
 
 ```text
-npm.cmd run cli -- context --project nova.nova --query "task description" --category CATEGORY_ID --token-budget 6000
-npm.cmd run cli -- context --project nova.nova --query "architecture-wide task" --scope all --token-budget 16000
-npm.cmd run cli -- search --project nova.nova --query "paper DOI or method name"
-npm.cmd run cli -- get --project nova.nova --id NODE_ID
+& $env:NOVA_CLI context --project nova.nova --query "task description" --category CATEGORY_ID --token-budget 6000
+& $env:NOVA_CLI context --project nova.nova --query "architecture-wide task" --scope all --token-budget 16000
+& $env:NOVA_CLI search --project nova.nova --query "paper DOI or method name"
+& $env:NOVA_CLI get --project nova.nova --id NODE_ID
 ```
 
 Use the context pack as the initial working context. It already includes root
@@ -236,16 +236,17 @@ with `supersedes`.
 
 ## Project CLI
 
-Use the packaged headless CLI for project operations. On Windows
-PowerShell, invoke `& ".\NOVA-CLI.exe" <command> --project <project.nova>`;
-installed releases also expose the absolute sidecar path in the per-user
-`NOVA_CLI` environment variable, so agents can invoke
+Use the packaged headless CLI for project operations. After Nova is installed,
+the absolute CLI path is available in the per-user `NOVA_CLI` environment
+variable. In Windows PowerShell, invoke
 `& $env:NOVA_CLI <command> --project <project.nova>`. A newly installed
-variable is visible to processes started after installation. `NOVA-CLI.exe`
-does not start Electron or Chromium and remains usable when
-`ELECTRON_RUN_AS_NODE` is set by an automation environment. In a source
-checkout where the packaged sidecar is unavailable, use
-`npm.cmd run cli -- <command> --project <project.nova>`.
+variable is visible to processes started after installation. In a source
+checkout, the local `NOVA-CLI.exe` and npm CLI script are available from the
+NOVA repository root. From that directory, use
+`& ".\NOVA-CLI.exe" <command> --project <project.nova>` or
+`npm.cmd run cli -- <command> --project <project.nova>`. `NOVA-CLI.exe` does
+not start Electron or Chromium and remains usable when `ELECTRON_RUN_AS_NODE`
+is set by an automation environment.
 
 Project commands require `--project <project.nova>`, emit JSON, and return a
 nonzero exit code with a JSON error on failure. `help`/`--help` returns plain-text
