@@ -2,13 +2,28 @@
 
 ## IDE-agent task workflow and retrieval
 
-`AGENTS.md` defines how to work in this repository; the active project file
-(`nova.nova`) is the authoritative source for NOVA project knowledge. JSON files
-are portable backups, not active projects. Do not load the complete map by default.
+`AGENTS.md` defines how to work in this repository. The single `*.nova` file
+directly in the current project root is the authoritative source for NOVA
+project knowledge. Discover it by extension; do not assume a filename or search
+subdirectories. If there are no matches or multiple matches, stop NOVA operations
+and report the missing or ambiguous database; do not choose one or create a
+replacement automatically. JSON files are portable backups, not active projects.
+Resolve the database to an absolute path and use that path for `--project`.
+For example, in PowerShell from the project root:
+
+```powershell
+$novaFiles = @(Get-ChildItem -LiteralPath . -Filter '*.nova' -File -Force)
+if ($novaFiles.Count -ne 1) {
+    throw "Expected exactly one .nova file in the project root; found $($novaFiles.Count)."
+}
+$novaProject = $novaFiles[0].FullName
+```
+
+Do not load the complete map by default.
 For non-trivial NOVA tasks, request a compact, task-specific context pack first:
 
 ```text
-& $env:NOVA_CLI context --project nova.nova --query "task description"
+& $env:NOVA_CLI context --project $novaProject --query "task description"
 ```
 
 The IDE reads this `AGENTS.md` separately. The context pack includes project
@@ -17,10 +32,10 @@ relevant node excerpts. Use its category ID to narrow detail retrieval when
 useful:
 
 ```text
-& $env:NOVA_CLI context --project nova.nova --query "task description" --category CATEGORY_ID --token-budget 6000
-& $env:NOVA_CLI context --project nova.nova --query "architecture-wide task" --scope all --token-budget 16000
-& $env:NOVA_CLI search --project nova.nova --query "paper DOI or method name"
-& $env:NOVA_CLI get --project nova.nova --id NODE_ID
+& $env:NOVA_CLI context --project $novaProject --query "task description" --category CATEGORY_ID --token-budget 6000
+& $env:NOVA_CLI context --project $novaProject --query "architecture-wide task" --scope all --token-budget 16000
+& $env:NOVA_CLI search --project $novaProject --query "paper DOI or method name"
+& $env:NOVA_CLI get --project $novaProject --id NODE_ID
 ```
 
 Use the context pack as the initial working context. It already includes root
@@ -82,31 +97,34 @@ backup into a new `.nova` file.
 
 ## Purpose and required workflow
 
-Use the existing `nova.nova` database for this checkout. A project database may
-use any filename with the `.nova` extension; commands always operate on the path
-passed with `--project`. It is a semantic knowledge graph, not a chat transcript.
-It must remain
-understandable without the conversation that produced it and detailed enough to
-reconstruct research, methods, decisions, implementation history, experiments,
-evidence, findings, limitations, rejected alternatives, and future work.
+Use the database resolved by the discovery rule above; its filename is not fixed.
+Commands always operate on the path passed with `--project`. It is a scientific
+knowledge graph. Its content must
+explain research questions, methods, research-relevant decisions, experiments,
+evidence, findings, limitations, rejected alternatives, and future research.
+Retain implementation details only when needed to understand or reproduce that
+knowledge. Development activity belongs in code, tests, run records, or version
+control, not in the map.
 
 For every interaction:
 
 1. Perform the requested work.
-2. Decide whether it produced meaningful project knowledge. Ignore filler,
-   repetition, and routine confirmations.
-3. Inspect relevant existing nodes and the root `llm_context` before classifying
-   or changing knowledge.
-4. Extend the smallest appropriate existing node or create a non-duplicate node;
-   place it semantically and add useful cross-links.
-5. Preserve rationale, provenance, evidence, dates, alternatives, and epistemic
-   status when meaningful. Ask one concise question if an important rationale is
-   materially uncertain.
+2. Apply the scientific admission rules below. If no qualifying knowledge was
+   produced, make no map mutation. Routine coding interactions normally end here.
+3. If knowledge qualifies, inspect relevant existing nodes and the root
+   `llm_context` before changing the map.
+4. Extend the smallest appropriate existing node or create a non-duplicate node.
+   Integrate the claim into a self-contained summary; do not append an update
+   log. Place it semantically and add useful cross-links.
+5. Preserve research-relevant rationale, provenance, evidence, alternatives, and
+   epistemic status. Ask one concise question if an important rationale is
+   materially uncertain. Apply the date rule below.
 6. Use the project CLI for mutations. After the related mutation batch, run
    `audit`, review every finding involving a node you touched, then run
    `validate`. Do not rewrite the whole file unnecessarily.
 
-The user should not need to request map maintenance explicitly.
+Maintain qualifying knowledge without waiting for an explicit request. This
+does not require a mutation after every interaction or a completion-log node.
 
 ## Project format
 
@@ -147,12 +165,36 @@ link { target, relation }
 
 Apply these admission and structure rules strictly:
 
-- **Scientific relevance test:** Every non-root node must contain a question,
-  idea, method, evidence, result, interpretation, limitation, decision, or
-  future research task. Implementation or documentation is eligible only when
-  it conveys one of these forms of knowledge.
-- **No activity-log nodes:** Activities such as "created report", "updated
-  script", or "generated figures" are not standalone knowledge.
+- **Scientific admission test:** Every new or revised claim must explain a
+  research question, method, hypothesis, research-relevant decision, experiment,
+  result, interpretation, limitation, or future research task. State its connection
+  to the research. A technical fact, user request, or epistemic tag alone does
+  not establish eligibility. These criteria govern every capture instruction
+  in this file, including instructions about implementation and maintenance.
+- **Implementation boundary:** Retain an algorithmic rule, data constraint,
+  measurement definition, or design tradeoff when it affects scientific
+  correctness, interpretation, reproducibility, or research feasibility.
+  Describe the rule or constraint and its scientific consequence, rather than
+  the work performed. For example, a memory measurement's scope affects the
+  interpretation of a benchmark; resizing its inspector dialog does not.
+  Exclude routine UI changes, refactors, bug-fix reports, feature inventories,
+  source-code walkthroughs, and implementation chronology.
+- **No activity logs:** Do not create development-protocol or completion nodes,
+  or insert activity logs into existing nodes. Routine verification details
+  such as test-pass lists, test counts, browser clicks, dialog dimensions,
+  commands executed, and "initial/final/latest verification" updates belong
+  outside the map. Appending these details to a scientific node does not make
+  them scientific knowledge. A scientific experimental protocol qualifies as
+  a method when it passes the admission test.
+- **Research evidence boundary:** A routine software check is not a research
+  result. Retain validation evidence only when it addresses an explicit
+  scientific question or a research-relevant validity claim, with the relevant
+  conditions, outcome, and limitations. Keep exhaustive test reports outside
+  the map and reference them only if necessary as provenance.
+- **Date rule:** Creation and modification times are application metadata, not
+  summary text. Include a date in content only when it identifies a source,
+  experimental condition, or event whose timing matters to the research claim.
+  Do not date-stamp development updates.
 - **Artifact rule:** Mention files only as provenance within the scientific node
   they support; do not create nodes whose main purpose is cataloguing artifacts.
 - **Atomic nodes:** When distinct claims exist, keep methods, results,
@@ -163,27 +205,30 @@ Apply these admission and structure rules strictly:
 - **Relationship requirement:** A new research node should normally connect to
   a question, method, evidence, or decision through hierarchy or a semantic
   link.
-- **Periodic audit:** Flag for review nodes whose main purpose is documentation,
-  implementation history, or task completion; retain them only if they pass the
-  scientific relevance test.
+- **Semantic review:** Before committing a map change, review every changed
+  claim against these admission rules. A successful CLI audit or validation
+  does not establish scientific relevance. Flag existing documentation,
+  implementation-history, or task-completion nodes for review; preserve only
+  their qualifying knowledge when restructuring them.
 
-Capture meaningful implementations, decisions and rationale, observations,
-ideas, sources, questions, hypotheses, methods, experiments, results,
-interpretations, findings, constraints, issues, failures, limitations, TODOs,
-and open questions. Prefer concise, factual, specific, self-contained nodes over
-chronological notes or excessive fragmentation. Reuse and restructure existing
-knowledge when appropriate; never duplicate a concept merely because it belongs
-to several areas.
+For claims that pass admission, preserve their scientific content and epistemic
+status. Research-relevant observations, sources, constraints, failures, and open
+questions qualify; ordinary engineering tasks and backlogs do not. Write concise,
+factual, self-contained summaries organized by concept, not by work session.
+Reuse and restructure existing knowledge when appropriate; never duplicate a
+concept merely because it belongs to several areas.
 
 Keep observations, assumptions, hypotheses, methods, results, interpretations,
 findings, decisions, and limitations distinct. Never invent evidence, rationale,
 results, citations, or conclusions. Never present an interpretation as a result.
-Retain superseded and rejected knowledge when it explains project evolution;
-mark and link its replacement instead of silently deleting history.
+Retain superseded and rejected scientific knowledge when it explains a research
+decision or change in method; mark and link its replacement. This does not
+require retaining routine development history or inadmissible protocol text.
 
 Use `rationale` for the concise reason, motivation, intended benefit, or problem
-behind a meaningful request, implementation, method, decision, experiment,
-limitation, or future-work item. Add `user` when the user supplied or confirmed
+behind an admitted method, implementation choice, decision, experiment,
+limitation, or future research task. A request alone is not grounds for a node.
+Add `user` when the user supplied or confirmed
 the reason; add `derived-from-context` only when it follows directly and
 unambiguously from established context. A result's causal explanation belongs
 in a supported hypothesis or interpretation, not its rationale. Rationale may
@@ -199,6 +244,10 @@ Common epistemic tags: `concept`, `research-question`, `hypothesis`, `method`,
 `experiment`, `result`, `finding`, `source`, `decision`, `implementation`,
 `issue`, `observation`, `idea`, `limitation`, `threat-to-validity`, `todo`, and
 `open-question`.
+
+Tags classify admitted knowledge; they do not broaden the admission criteria.
+In particular, `tool-development`, `documentation`, and `evaluation-validation`
+do not authorize feature catalogues, activity logs, or routine test reports.
 
 Preferred work-area tags:
 
@@ -226,11 +275,13 @@ observation, analysis, or design discussion. Source nodes must contain enough
 information to locate the source again. Connect evidence with semantic links
 such as `supports`, `supported-by`, or `evidence-for`; do not invent citations.
 
-For meaningful experiments, retain the available purpose, related question or
-hypothesis, setup, method, inputs, configuration, result, interpretation,
-limitations, and resulting decisions. Keep results separate from interpretation.
+For scientific experiments, retain the available purpose, related research
+question or hypothesis, setup, method, inputs, configuration, result,
+interpretation, limitations, and resulting decisions. Include only the detail
+needed to assess or reproduce the scientific claim. Keep results separate from
+interpretation. Routine application and UI checks are not scientific experiments.
 
-For important decisions, retain the decision, rationale, alternatives,
+For research-relevant decisions, retain the decision, rationale, alternatives,
 supporting evidence, consequences, and status when available. Link replacements
 with `supersedes`.
 
@@ -337,10 +388,13 @@ for portable copies and the CLI for all active-project changes.
 When relevant, merge duplicates, clarify hierarchy, improve summaries, add
 missing links, mark superseded knowledge, resolve completed TODOs, connect
 evidence to findings, and connect experiments to their research questions.
-Never destructively remove useful research history.
+Preserve useful scientific evidence and rejected research alternatives when
+restructuring. Remove inadmissible protocol text from summaries without
+discarding any qualifying claims it contains; do not archive that text as new
+map nodes.
 
-The map should reliably answer: why architecture and methods were selected;
-which alternatives were considered; what evidence supports decisions and
+The map should reliably answer: why research-relevant architecture and methods
+were selected; which alternatives were considered; what evidence supports decisions and
 findings; which experiments address which questions; what the actual results,
 interpretations, limitations, and future work are; how the project evolved; and
 what belongs in methodology, evaluation, discussion, or thesis chapters.
