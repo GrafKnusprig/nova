@@ -150,6 +150,8 @@ The headless CLI automatically starts or reuses a local worker for an existing `
 
 Edits return after the database transaction commits. Context preparation follows in a separate helper, reusing unchanged derived data. External changes also trigger background preparation while the worker is idle. **Every read verifies freshness and waits if the cache has not caught up.** Outdated rebuild results are rejected. A read sees a consistent snapshot; changes committed after that snapshot is pinned are observed by the next read.
 
+Before staging a `.nova` database in version control, run `checkpoint-for-version-control --project <project.nova>` and require a successful exit. This flushes committed WAL changes into the main file while the worker stays available. Finish other database activity and retry if checkpointing is blocked; avoid further writes before staging, and do not commit or manually delete WAL/SHM sidecars.
+
 The worker exits after five idle minutes and starts again when needed. `worker-status` and `worker-stop` are optional diagnostics. This retrieval uses original content, hierarchy metadata, and SQLite FTS5; it does not require embeddings or a model call to prepare context. Database writes still perform validation and transactional work. Cache reuse improves individual reads; fewer tool calls can also reduce agent overhead, but end-to-end savings depend on the agent workflow.
 
 SQLite transactions protect storage consistency. Ordinary CLI updates do not compare an agent's earlier retrieved revision. If you learn that another writer changed facts your decision depends on, retrieve those records and reconsider the edit.

@@ -69,6 +69,22 @@ and ask when identity or scope uncertainty would change the implementation.
 
 For an existing `.nova` project, the headless CLI manages a local cached worker automatically. Continue issuing normal commands; agents do not need to open or close a session. Edits return after the database commit; context preparation then runs in a helper. The worker also checks for external changes while idle. Every read verifies freshness and waits if preparation has not caught up. It exits after an idle timeout. Optional `worker-status` and `worker-stop` are diagnostics, not required workflow steps.
 
+Before staging or committing a `.nova` file in version control, finish the
+intended database edits and run:
+
+```powershell
+& $env:NOVA_CLI checkpoint-for-version-control --project $novaProject
+```
+
+Require a successful exit before staging the `.nova` file. This command runs
+after earlier requests in the worker queue and checkpoints committed SQLite
+WAL changes into the main database file, even while the worker remains running.
+It also works without a worker. A busy or incomplete checkpoint returns a
+nonzero exit code; finish other database activity and retry. Do not delete WAL
+or SHM sidecars manually or stage them in version control. Avoid concurrent
+writes between checkpointing and staging; rerun the command after further
+edits. The command does not save unsaved desktop edits or run Git commands.
+
 Root `llm_context` instructions always apply. Nodes may additionally contain `agent_guidance` with a `summary` and `instructions[]`, scoped to that node and its descendants. Context packs return relevant scopes in `guidance.topic_guidance`, including scopes for returned cross-category records. Preserve instruction text; report conflicting guidance rather than silently overriding project rules. Use `context-get --id ID`, `context-set --id ID`, and `instruction-add`/`instruction-remove --id ID` to maintain node guidance. Category overviews are navigation aids; inspect original candidate content before updating or declaring information new. Original content already returned in a context pack can satisfy this requirement; fetch missing detail only when needed. Context omission IDs may be truncated to 50; `omitted_node_count` and `omitted_ids_truncated` report the full extent of omissions.
 
 Use the CLI for project reads and mutations; do not inspect or modify the
@@ -328,6 +344,7 @@ instruction-add [--id ID] --instruction TEXT|--instruction-file FILE
 instruction-remove [--id ID] --instruction TEXT|--instruction-file FILE
 worker-status
 worker-stop
+checkpoint-for-version-control  Flush committed WAL changes before staging the .nova file
 tag-define --tag TAG --description TEXT|--description-file FILE
 tag-remove --tag TAG
 import --from BACKUP.json  Restore into a NEW .nova destination

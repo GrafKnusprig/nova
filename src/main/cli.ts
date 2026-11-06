@@ -4,7 +4,7 @@ import { addLlmInstruction, changeProjectLink, children, createProjectFile, crea
 import { initializeProjectAgents } from "./agentsFile";
 import { auditProject } from "./audit";
 import { buildContextPack, searchProject } from "./context";
-import { exportSqliteToJson, findCachedSqliteNode, isNovaDatabasePath, migrateJsonToSqlite, readJsonProjectForImport, searchSqliteIndex, sqliteMigrationStatus } from "./sqliteProject";
+import { checkpointForVersionControl, exportSqliteToJson, findCachedSqliteNode, isNovaDatabasePath, migrateJsonToSqlite, readJsonProjectForImport, searchSqliteIndex, sqliteMigrationStatus } from "./sqliteProject";
 import { buildBenchmarkFixture } from "./benchmarkFixture";
 import { finishCliProfile, measureCliPhase, startCliProfile } from "./cliProfile";
 import { performance } from "node:perf_hooks";
@@ -19,6 +19,7 @@ Usage: NOVA-CLI.exe <command> --project <project-file.json|project.nova> [option
 Commands:
   worker-status  Report the retained worker cache and idle timeout
   worker-stop    Close the retained worker after pending requests finish
+  checkpoint-for-version-control  Flush committed WAL changes into the .nova file before staging it
   benchmark-generate  Create a NEW synthetic .nova fixture. Options: --nodes (300), --branching (6),
                       --summary-chars (1000), --links-per-node (2), --seed (1)
   init         Create a schema-7 project in JSON or SQLite (.nova). Options: --name, --summary, --summary-file
@@ -61,6 +62,7 @@ function boundedInteger(options: Options, key: string, fallback: number, minimum
 
 async function execute(command: string, options: Options): Promise<unknown> {
   const filePath = projectPath(options);
+  if (command === "checkpoint-for-version-control") return { ok: true, command, project: filePath, ...checkpointForVersionControl(filePath) };
   if (command === "benchmark-generate") {
     if (!isNovaDatabasePath(filePath)) throw new Error("Benchmark destination must use the .nova extension.");
     const count = boundedInteger(options, "nodes", 300, 2, 100000);

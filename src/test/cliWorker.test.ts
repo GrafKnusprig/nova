@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
-import { createProjectFile, mutateProject, projectRoot, updateProjectNode } from "../main/project";
+import { createProjectFile, mutateProject, projectRoot, readProject, updateProjectNode } from "../main/project";
 
 const execute = promisify(execFile);
 const entry = path.resolve("src/main/cli-entry.ts");
@@ -14,6 +15,52 @@ function cli(project: string, args: string[], idle = "5000", direct = false) {
   return execute(process.execPath, ["--import", "tsx", entry, ...args, "--project", project], { encoding: "utf8", env: { ...process.env, NOVA_CLI_WORKER: direct ? "0" : "1", NOVA_CLI_REQUIRE_WORKER: "1", NOVA_CLI_IDLE_MS: idle, NOVA_CLI_PROFILE: "1" }, timeout: 20000 });
 }
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+test("checkpoint makes the main file independently readable while the worker stays alive", async context => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "nova-checkpoint-test-"));
+  const file = path.join(directory, "test.nova"), copy = path.join(directory, "copy.nova");
+  await createProjectFile(file, "Checkpoint test");
+  context.after(async () => { await cli(file, ["worker-stop"]).catch(() => {}); await rm(directory, { recursive: true, force: true }); });
+  const root = String(projectRoot((await readProject(file)).document).id);
+  const before = JSON.parse((await cli(file, ["worker-status"], "60000")).stdout);
+  for (const direct of [false, true]) {
+    const summary = direct ? "direct checkpoint marker" : "worker checkpoint marker";
+    await cli(file, ["update", "--id", root, "--summary", summary], "60000");
+    assert.ok((await stat(`${file}-wal`)).size > 0);
+    const result = JSON.parse((await cli(file, ["checkpoint-for-version-control"], "60000", direct)).stdout);
+    assert.equal(result.ok, true);
+    assert.equal(result.busy, 0);
+    assert.equal(result.log, 0);
+    assert.equal(result.checkpointed, 0);
+    // A VCS checkout contains only this file, without the worker's WAL/SHM.
+    await copyFile(file, copy);
+    assert.equal(projectRoot((await readProject(copy)).document).summary, summary);
+    assert.equal(JSON.parse((await cli(file, ["worker-status"], "60000")).stdout).pid, before.pid);
+    assert.equal(JSON.parse((await cli(file, ["get", "--id", root], "60000")).stdout).node.summary, summary);
+    assert.equal(JSON.parse((await cli(file, ["checkpoint-for-version-control"], "60000", direct)).stdout).ok, true);
+  }
+  const reader = new DatabaseSync(file);
+  try {
+    reader.exec("BEGIN; SELECT * FROM project_info;");
+    await cli(file, ["update", "--id", root, "--summary", "blocked checkpoint marker"], "60000");
+    await assert.rejects(cli(file, ["checkpoint-for-version-control"], "60000"), error => {
+      const failure = error as Error & { stderr: string; code: number };
+      assert.equal(failure.code, 1);
+      assert.match(failure.stderr, /Checkpoint could not complete/);
+      assert.match(failure.stderr, /"ok": false/);
+      return true;
+    });
+  } finally { reader.exec("ROLLBACK"); reader.close(); }
+  await cli(file, ["checkpoint-for-version-control"], "60000");
+  await copyFile(file, copy);
+  assert.equal(projectRoot((await readProject(copy)).document).summary, "blocked checkpoint marker");
+  const json = path.join(directory, "test.json");
+  await createProjectFile(json, "JSON test");
+  await assert.rejects(cli(json, ["checkpoint-for-version-control"], "60000", true), /Checkpoint requires a .nova database/);
+  const missing = path.join(directory, "missing.nova");
+  await assert.rejects(cli(missing, ["checkpoint-for-version-control"], "60000", true));
+  await assert.rejects(stat(missing), /ENOENT/);
+});
 
 test("CLI worker coordinates startup, detects external and own writes, isolates projects and stops without explicit agent sessions", async context => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "nova-worker-test-"));

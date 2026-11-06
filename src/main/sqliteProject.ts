@@ -323,6 +323,20 @@ export function isNovaDatabasePath(filePath: string): boolean {
   return path.extname(filePath).toLowerCase() === ".nova";
 }
 
+/** Flush committed WAL frames into the file that version control captures. */
+export function checkpointForVersionControl(filePath: string): { busy: number; log: number; checkpointed: number } {
+  if (!isNovaDatabasePath(filePath)) throw new Error("Checkpoint requires a .nova database.");
+  accessSync(filePath); // Never create an empty database for a mistyped path.
+  const db = openDatabase(filePath);
+  try {
+    const result = db.prepare("PRAGMA wal_checkpoint(TRUNCATE)").get();
+    const busy = Number(result?.busy), log = Number(result?.log), checkpointed = Number(result?.checkpointed);
+    if (busy !== 0 || !Number.isFinite(log) || log !== checkpointed)
+      throw new Error("Checkpoint could not complete; another database connection may hold a read or write transaction. Finish other database activity and retry before staging the .nova file.");
+    return { busy, log, checkpointed };
+  } finally { db.close(); }
+}
+
 export async function readJsonProjectForImport(filePath: string): Promise<JsonObject> {
   if (path.extname(filePath).toLowerCase() !== ".json") throw new Error("The import source must use the .json extension.");
   const raw = JSON.parse(await fs.readFile(filePath, "utf8")) as unknown;
